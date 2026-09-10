@@ -15,7 +15,7 @@ hl.env("PATH", os.getenv("HOME") .. "/.local/share/syland/bin:" .. (os.getenv("P
 hl.config({
     general = {
         gaps_in = 4,
-        gaps_out = 18,
+        gaps_out = 36,
         border_size = 1,
     },
     decoration = {

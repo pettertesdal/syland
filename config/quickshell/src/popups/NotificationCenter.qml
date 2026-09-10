@@ -11,14 +11,15 @@ import "../shapes"
 // toast-display are two separate lifetimes on the same underlying
 // NotificationServer.
 //
-// Shaped by shapes/NotificationPanelShape.qml: flush against the screen's
-// true left and right edges, except one notch cut into the top-right area
-// that shares its diagonal exactly with windows/RightModule.qml's own
-// bottom-right corner — see that shape's own comment for the geometry.
-// Because the panel is genuinely full-width now (not a fixed 360px
-// column), `panel` doesn't need its own width property — it's always
-// parent.width, and the slide is just `x` between parent.width
-// (off-screen) and 0 (flush against the true left edge, open).
+// Shaped by shapes/SeamPanelShape.qml (shared with popups/BluetoothPanel.qml):
+// a fixed-width column (not the whole screen), flush against the screen's
+// true right edge and true bottom edge, with a notch cut into the
+// top-right area that shares its diagonal exactly with
+// windows/RightModule.qml's own bottom-right corner — see that shape's own
+// comment for the geometry. The Canvas math there is relative to the
+// panel's own width/height, so it stays correct regardless of panelWidth
+// as long as the panel's right edge stays flush against the screen's
+// right edge when open (x: parent.width - panelWidth).
 AnimatedPopup {
     id: root
 
@@ -27,14 +28,18 @@ AnimatedPopup {
     openFlag: Popups.notificationCenterOpen
     onCloseRequested: Popups.notificationCenterOpen = false
 
+    readonly property int panelWidth: 380
+
     Item {
         id: panel
-        width: parent.width
-        height: parent.height
-        x: root.openFlag ? 0 : parent.width
+        width: root.panelWidth
+        // A gap between the panel's bottom and the screen's true bottom
+        // edge, sized to match the panel's own width.
+        height: parent.height - root.panelWidth
+        x: root.openFlag ? (parent.width - width) : parent.width
         Behavior on x { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
 
-        NotificationPanelShape {
+        SeamPanelShape {
             anchors.fill: parent
             fillColor: Theme.background
             strokeColor: Theme.foreground
@@ -110,6 +115,16 @@ AnimatedPopup {
             model: NotificationService.server.trackedNotifications
 
             delegate: NotificationCard {
+                // required property, not a bare `modelData` reference —
+                // this file sits nested inside shell.qml's per-screen
+                // `Scope { required property var modelData }` (the
+                // QuickshellScreenInfo from Variants), which shadows a
+                // ListView's own implicit modelData if the delegate
+                // doesn't explicitly re-declare it. Same pattern
+                // windows/LeftModule.qml and popups/NotificationToast.qml
+                // already use for exactly this reason.
+                required property var modelData
+
                 width: ListView.view.width
                 notification: modelData
                 // The panel itself already has a border — individually

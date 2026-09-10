@@ -88,6 +88,7 @@
 			yq
 			fzf
 			libnotify
+			kew
 	];
 
 	fonts.packages = with pkgs; [

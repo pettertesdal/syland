@@ -56,4 +56,14 @@ QtObject {
             Popups.notificationCenterOpen = !Popups.notificationCenterOpen
         }
     }
+
+    // Bind to a Hyprland keybind the same way, e.g.:
+    //   hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("qs ipc call bluetooth-panel toggle"), { description = "Toggle bluetooth panel" })
+    property IpcHandler _bluetoothPanelHandler: IpcHandler {
+        target: "bluetooth-panel"
+
+        function toggle(): void {
+            Popups.bluetoothPanelOpen = !Popups.bluetoothPanelOpen
+        }
+    }
 }
