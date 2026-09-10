@@ -1,0 +1,3 @@
+-- Host-specific overrides for the "laptop" hostname.
+-- Example once you know your real monitor name (`hyprctl monitors`):
+-- hl.monitor({ name = "eDP-1", resolution = "1920x1080", position = "0x0", scale = 1 })

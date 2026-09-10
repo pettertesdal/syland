@@ -1,0 +1,10 @@
+# Theme.qml references ColorLoader.qml as a sibling type. Being in the
+# same plain directory should be enough for that on its own, but a
+# singleton loaded through the *root* qmldir (../qmldir) gets its own
+# module context rooted there instead of here — so without this file,
+# Theme.qml can't see ColorLoader.qml as a type ("ColorLoader is not a
+# type"). Registering both files here, even though Theme is already also
+# registered in ../qmldir for outside consumers, fixes that.
+
+singleton Theme Theme.qml
+ColorLoader ColorLoader.qml

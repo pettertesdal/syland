@@ -1,0 +1,7 @@
+# Same reason as theme/qmldir: IpcManager.qml references Popups.qml as a
+# sibling type, which needs this folder to have its own qmldir to resolve
+# correctly when the file is loaded as a singleton via ../qmldir.
+
+singleton ShellState ShellState.qml
+singleton Popups Popups.qml
+singleton IpcManager IpcManager.qml

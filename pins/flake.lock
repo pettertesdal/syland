@@ -1,0 +1,27 @@
+{
+  "nodes": {
+    "nixpkgs-nix-search-tv": {
+      "locked": {
+        "lastModified": 1787015157,
+        "narHash": "sha256-IuZnTuFs/Da1bzV1KtuKdFbsd05LcpuQ+0eB6ZuOSxM=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "5036dc112738f8b5af518c5a7af4098a2ec81417",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "5036dc112738f8b5af518c5a7af4098a2ec81417",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs-nix-search-tv": "nixpkgs-nix-search-tv"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

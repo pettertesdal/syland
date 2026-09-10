@@ -1,0 +1,21 @@
+# Registers every pragma-Singleton file below as a globally-referenceable
+# type name. Any .qml file that `import`s this directory (directly, or via
+# a subdirectory import like "../") can then write e.g. `Theme.background`
+# from anywhere, with no per-use instantiation — QML creates exactly one
+# instance the first time it's touched and hands that same instance back
+# every time after.
+#
+# Plain (non-singleton) component folders — modules/, components/,
+# popups/, windows/ — don't need a qmldir at all: importing a directory
+# with no qmldir still exposes every .qml file in it as a type, named
+# after the file. qmldir is only required to declare something `singleton`.
+
+singleton Theme       theme/Theme.qml
+singleton Metrics     theme/Metrics.qml
+singleton ShellState  state/ShellState.qml
+singleton Popups      state/Popups.qml
+singleton IpcManager  state/IpcManager.qml
+singleton ClockService services/ClockService.qml
+singleton NotificationService services/NotificationService.qml
+singleton NetworkStatusService services/NetworkStatusService.qml
+singleton BluetoothStatusService services/BluetoothStatusService.qml
