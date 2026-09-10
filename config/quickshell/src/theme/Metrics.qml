@@ -29,6 +29,14 @@ QtObject {
     // How deep the diagonal cut is on a HangingModule's bottom corners.
     property int chamferSize: 10
 
+    // How far LeftModule/RightModule sit from the screen's left/right edge.
+    // Not arbitrary: chosen so each module's outer diagonal, extended,
+    // points exactly at the screen's physical corner — derived, not
+    // guessed. popups/NotificationCenter.qml's own top-right notch shares
+    // this same margin, which is what makes its seam with RightModule land
+    // on the exact same line rather than merely a visually-close one.
+    readonly property int moduleMargin: moduleHeight - chamferSize
+
     // Shared duration for every Behavior/NumberAnimation in the shell —
     // missing this property doesn't fail loudly: `Metrics.animDuration`
     // silently evaluates to `undefined` wherever it's referenced,

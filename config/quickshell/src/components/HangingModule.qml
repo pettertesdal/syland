@@ -37,8 +37,8 @@ PanelWindow {
         height: Metrics.moduleHeight
         y: 0
         x: {
-            if (root.align === "left") return Metrics.spacingMd
-            if (root.align === "right") return parent.width - width - Metrics.spacingMd
+            if (root.align === "left") return Metrics.moduleMargin
+            if (root.align === "right") return parent.width - width - Metrics.moduleMargin
             return (parent.width - width) / 2
         }
 

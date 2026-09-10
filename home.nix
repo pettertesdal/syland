@@ -33,11 +33,14 @@ in {
 		Unit.Description = "Check whether pinned Nix packages are still needed";
 		Service = { Type = "oneshot"; ExecStart = "${pinsCheck}/bin/pins-check"; };
 	};
+
 	systemd.user.timers.pins-check = {
 		Unit.Description = "Daily check for stale Nix pins";
 		Timer = { OnCalendar = "daily"; Persistent = true; };
 		Install.WantedBy = [ "timers.target" ];
 	};
+
+	services.awww.enable = true;
 
 	programs = {
 		zsh = {

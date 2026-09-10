@@ -1,21 +1,24 @@
 import QtQuick
 import "../"
 import "../components"
+import "../shapes"
 
-// The notification history panel: a full-height sidebar that slides in
-// from the right edge and back out, showing every notification currently
+// The notification history panel: full screen width and height, sliding
+// in from the right and back out, showing every notification currently
 // tracked by services/NotificationService.qml. Independent of
 // popups/NotificationToast.qml: a notification can have already
 // auto-dismissed as a toast and still show up here, since tracking and
 // toast-display are two separate lifetimes on the same underlying
 // NotificationServer.
 //
-// Unlike ExamplePanel this doesn't grow/shrink — `panel` is always
-// panelWidth wide and the screen's full height, and the only thing that
-// animates is its own x position sliding linearly between off-screen
-// (parent.width) and flush against the right edge (parent.width -
-// panelWidth). AnimatedPopup still supplies the show/hide-with-
-// animation-finish timing, just not any of the geometry.
+// Shaped by shapes/NotificationPanelShape.qml: flush against the screen's
+// true left and right edges, except one notch cut into the top-right area
+// that shares its diagonal exactly with windows/RightModule.qml's own
+// bottom-right corner — see that shape's own comment for the geometry.
+// Because the panel is genuinely full-width now (not a fixed 360px
+// column), `panel` doesn't need its own width property — it's always
+// parent.width, and the slide is just `x` between parent.width
+// (off-screen) and 0 (flush against the true left edge, open).
 AnimatedPopup {
     id: root
 
@@ -24,18 +27,18 @@ AnimatedPopup {
     openFlag: Popups.notificationCenterOpen
     onCloseRequested: Popups.notificationCenterOpen = false
 
-    readonly property int panelWidth: 360
-
-    Rectangle {
+    Item {
         id: panel
-        width: root.panelWidth
+        width: parent.width
         height: parent.height
-        x: root.openFlag ? (parent.width - width) : parent.width
+        x: root.openFlag ? 0 : parent.width
         Behavior on x { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
 
-        color: Theme.background
-        border.width: 1
-        border.color: Theme.foreground
+        NotificationPanelShape {
+            anchors.fill: parent
+            fillColor: Theme.background
+            strokeColor: Theme.foreground
+        }
 
         // Swallow clicks on the panel itself so they don't fall through
         // to AnimatedPopup's full-window dismiss MouseArea.
@@ -44,6 +47,11 @@ AnimatedPopup {
         Column {
             id: header
             anchors.top: parent.top
+            // The shape's own top edge sits at Metrics.moduleHeight for
+            // almost its whole width (see NotificationPanelShape.qml) —
+            // content has to clear that, not just y=0, or it'd render in
+            // the transparent notch area above the visible fill.
+            anchors.topMargin: Metrics.moduleHeight + Metrics.spacingMd
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.margins: Metrics.spacingMd
