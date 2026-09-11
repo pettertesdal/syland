@@ -29,8 +29,6 @@ HangingModule {
 
         Row {
             id: statusRow
-            anchors.centerIn: parent
-            spacing: Metrics.spacingSm
 
             WifiIndicator {}
             DiagonalDivider {}

@@ -22,6 +22,7 @@ in {
 	home.stateVersion = "26.05";
 
 	home.packages = with pkgs; [
+		cliamp
 		pinsCheck
 			(pkgs.writeShellApplication {
 			 name = "ns";
@@ -43,6 +44,11 @@ in {
 
 	services.awww.enable = true;
 
+	services.mpd = {
+		enable = true;
+		musicDirectory = "${config.home.homeDirectory}/media/music";
+	};
+
 	programs = {
 		zsh = {
 			enable = true;
@@ -60,6 +66,7 @@ in {
 			enable = true;
 		};
 		nix-search-tv.enable = true;
+		rmpc.enable = true;
 		direnv = {
 			enable = true;
 			enableZshIntegration = true;
@@ -89,9 +96,9 @@ in {
 	};
 
 
-	home.file.".config/hypr".source = ./config/hypr;
-	home.file.".config/quickshell".source = ./config/quickshell;
-	home.file.".config/ghostty".source = ./config/ghostty;
+	home.file.".config/hypr".source = ./home/hypr;
+	home.file.".config/quickshell".source = ./home/quickshell;
+	home.file.".config/ghostty".source = ./home/ghostty;
 
 	programs.home-manager.enable = true;
 }
