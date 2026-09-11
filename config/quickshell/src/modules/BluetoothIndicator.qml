@@ -10,7 +10,7 @@ Row {
         text: "BT"
         color: BluetoothStatusService.enabled ? Theme.foreground : Theme.red
         font.family: Metrics.fontFamily
-        font.pixelSize: Metrics.fontSizeSmall
+        font.pixelSize: Metrics.fontSizeRegular
     }
 
     Text {
@@ -18,6 +18,6 @@ Row {
         text: BluetoothStatusService.connectedCount
         color: Theme.accent
         font.family: Metrics.fontFamily
-        font.pixelSize: Metrics.fontSizeSmall
+        font.pixelSize: Metrics.fontSizeRegular
     }
 }

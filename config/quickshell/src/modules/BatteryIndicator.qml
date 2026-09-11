@@ -14,7 +14,7 @@ Row {
         text: UPower.displayDevice && UPower.displayDevice.state === UPowerDeviceState.Charging ? "CHG" : "BAT"
         color: UPower.displayDevice && UPower.displayDevice.state === UPowerDeviceState.Charging ? Theme.accent : Theme.foreground
         font.family: Metrics.fontFamily
-        font.pixelSize: Metrics.fontSizeSmall
+        font.pixelSize: Metrics.fontSizeRegular
     }
 
     Text {
@@ -22,6 +22,6 @@ Row {
         text: UPower.displayDevice ? Math.round(UPower.displayDevice.percentage * 100) + "%" : ""
         color: Theme.foreground
         font.family: Metrics.fontFamily
-        font.pixelSize: Metrics.fontSizeSmall
+        font.pixelSize: Metrics.fontSizeRegular
     }
 }

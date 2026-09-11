@@ -1,49 +1,38 @@
 import QtQuick
+import QtQuick.Shapes
 
 // The "hanging tag" outline every HangingModule uses: flush top edge (the
 // two top corners are square, as if pinned to the screen's top edge), and
 // the two bottom corners cut diagonally inward — a hexagon, not a
-// rectangle. Same Canvas/requestPaint-on-change convention the old
-// windows/Border.qml and the now-deleted PopupShape.qml used, but with
-// straight lineTo() cuts instead of arcTo()/quadraticCurveTo() curves —
-// a different technique in the same spirit, fitting the terminal-minimal
-// direction (straight lines) rather than reviving the melt-into-border
-// curve that direction moved away from.
-Canvas {
+// rectangle. Built with Shape/ShapePath rather than Canvas: this shape
+// gets resized every frame while windows/RightModule.qml grows into the
+// bluetooth panel, and Canvas needs an explicit requestPaint() per
+// resize, which can't keep up with a smooth per-frame animation — the
+// visible symptom was a trailing unpainted strip (rendering as a white
+// box) lagging behind the actual growing bounds. Shape is scene-graph
+// native: its geometry just re-evaluates from the width/height bindings
+// below with no manual repaint step, so it can't lag the same way.
+Shape {
     id: root
 
     property color fillColor: "black"
     property color strokeColor: "white"
     property int chamfer: 10
 
-    onWidthChanged: requestPaint()
-    onHeightChanged: requestPaint()
-    onFillColorChanged: requestPaint()
-    onStrokeColorChanged: requestPaint()
-    onChamferChanged: requestPaint()
+    readonly property int _c: Math.max(0, Math.min(chamfer, width / 2, height))
 
-    onPaint: {
-        var ctx = getContext("2d")
-        ctx.reset()
+    ShapePath {
+        fillColor: root.fillColor
+        strokeColor: root.strokeColor
+        strokeWidth: 1
+        startX: 0
+        startY: 0
 
-        var w = width
-        var h = height
-        var c = Math.min(root.chamfer, w / 2, h)
-
-        ctx.beginPath()
-        ctx.moveTo(0, 0)
-        ctx.lineTo(w, 0)
-        ctx.lineTo(w, h - c)
-        ctx.lineTo(w - c, h)
-        ctx.lineTo(c, h)
-        ctx.lineTo(0, h - c)
-        ctx.closePath()
-
-        ctx.fillStyle = root.fillColor
-        ctx.fill()
-
-        ctx.lineWidth = 1
-        ctx.strokeStyle = root.strokeColor
-        ctx.stroke()
+        PathLine { x: root.width; y: 0 }
+        PathLine { x: root.width; y: root.height - root._c }
+        PathLine { x: root.width - root._c; y: root.height }
+        PathLine { x: root._c; y: root.height }
+        PathLine { x: 0; y: root.height - root._c }
+        PathLine { x: 0; y: 0 }
     }
 }

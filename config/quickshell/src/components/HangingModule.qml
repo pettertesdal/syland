@@ -34,24 +34,28 @@ PanelWindow {
     id: root
 
     anchors { top: true; left: true; right: true }
-    // The real Wayland surface size does NOT animate — animating
-    // implicitHeight directly means requesting a new wlr-layer-shell
-    // surface size every single frame (a real compositor-side reconfigure
-    // each time), which is visibly stuttery, unlike resizing a plain
-    // Item. Instead the surface jumps to its final size once when growing
-    // starts and jumps back once after shrinking finishes (via
-    // shrinkTimer below, the same windowVisible/closeTimer trick
-    // components/AnimatedPopup.qml uses) — `box`'s own width/height
-    // Behavior below is what actually animates, smoothly, since resizing
-    // an Item inside an already-correctly-sized surface is cheap.
-    property bool windowExpanded: false
-    implicitHeight: windowExpanded ? grownHeight : Metrics.moduleHeight
+    // Always sized to the largest state this module will ever need
+    // (grownHeight — for LeftModule/CenterModule, which never grow, this
+    // is just Metrics.moduleHeight, identical to before). The window's
+    // real size never changes after creation: no resize events, so
+    // nothing for a Wayland surface resize to visually glitch on — an
+    // earlier version resized the real window between small/grown states
+    // and got a "trailing white box" during the transition, apparently
+    // the surface's own buffer not clearing properly for the
+    // newly-exposed area right after a real resize. `box` below is what
+    // actually animates, a cheap scene-graph-native Item resize with
+    // nothing Wayland-level involved. `mask` keeps real input scoped to
+    // box's own current bounds, so a permanently-tall transparent window
+    // doesn't swallow clicks meant for whatever's underneath while this
+    // module is small/idle.
+    implicitHeight: grownHeight
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     // Ordinary hanging modules sit on the same layer as Border/TopBar-
-    // equivalents; expanded, this needs to draw above normal windows the
+    // equivalents; grown, this needs to draw above normal windows the
     // same way AnimatedPopup's own popups do.
-    WlrLayershell.layer: windowExpanded ? WlrLayer.Overlay : WlrLayer.Top
+    WlrLayershell.layer: grown ? WlrLayer.Overlay : WlrLayer.Top
+    mask: Region { item: box }
 
     property string align: "left" // "left" | "center" | "right"
     property int boxWidth: 100
@@ -60,21 +64,6 @@ PanelWindow {
     property bool grown: false
     property int grownWidth: boxWidth
     property int grownHeight: Metrics.moduleHeight
-
-    onGrownChanged: {
-        if (grown) {
-            shrinkTimer.stop()
-            windowExpanded = true
-        } else {
-            shrinkTimer.restart()
-        }
-    }
-
-    Timer {
-        id: shrinkTimer
-        interval: Metrics.animDuration + 20
-        onTriggered: if (!root.grown) root.windowExpanded = false
-    }
 
     Item {
         id: box
@@ -88,10 +77,6 @@ PanelWindow {
             if (root.align === "right") return parent.width - width - Metrics.moduleMargin
             return (parent.width - width) / 2
         }
-        // Content sized for the grown state would otherwise render past
-        // the shape's own edges mid-animation, before the box has grown
-        // enough to actually contain it.
-        clip: true
 
         HangingBoxShape {
             anchors.fill: parent
@@ -107,6 +92,16 @@ PanelWindow {
             // Extra clearance at the bottom so content doesn't sit under
             // the diagonal cut corners.
             anchors.bottomMargin: Metrics.chamferSize
+            // Content sized for the grown state would otherwise render
+            // past the shape's own edges mid-animation, before the box
+            // has grown enough to actually contain it. Clipping here
+            // instead of on `box` itself matters: box's own edge sits
+            // exactly on HangingBoxShape's 1px stroke (centered on the
+            // boundary, so half of it is technically outside box's
+            // bounds) — clipping at the box level cut that half away,
+            // which is why the left/top edges of every hanging module
+            // went missing once this existed.
+            clip: true
         }
     }
 }

@@ -13,7 +13,7 @@ Row {
         text: "NET"
         color: NetworkStatusService.connected ? Theme.foreground : Theme.red
         font.family: Metrics.fontFamily
-        font.pixelSize: Metrics.fontSizeSmall
+        font.pixelSize: Metrics.fontSizeRegular
     }
 
     Text {
@@ -21,6 +21,6 @@ Row {
         text: Math.round(NetworkStatusService.signalStrength) + "%"
         color: Theme.foreground
         font.family: Metrics.fontFamily
-        font.pixelSize: Metrics.fontSizeSmall
+        font.pixelSize: Metrics.fontSizeRegular
     }
 }
