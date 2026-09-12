@@ -8,7 +8,15 @@
 		# zellij pane, so opening a terminal from within one never nests.
 		enableZshIntegration = true;
 
-		settings.default_layout = "dev";
+		# Deliberately NOT setting settings.default_layout = "dev" here:
+		# that applies globally, including to the plain auto-attach
+		# session every new terminal gets via enableZshIntegration above
+		# -- confirmed live, it meant SUPER+RETURN's ordinary terminal
+		# was launching nvim/the dev tabs too. The "dev" layout is only
+		# ever requested explicitly now, by
+		# home/syland-context.nix's ensure_devterm, via
+		# `--new-session-with-layout dev` at the point it creates that
+		# one specific session.
 
 		# KDL, not Nix: inline child nodes inside { } need a trailing ";"
 		# or zellij's own parser rejects the whole file (confirmed live --

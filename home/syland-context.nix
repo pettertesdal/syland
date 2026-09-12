@@ -61,6 +61,24 @@ let
 						zellij --session dev action close-tab --tab-id "$id"
 					done
 				else
+					# `zellij attach` has no --layout flag at all -- the
+					# "dev" layout can only be requested at creation time
+					# via `--new-session-with-layout`, which always
+					# starts fresh and errors if a session by that name
+					# already exists (both confirmed live). So: if a
+					# "dev" session is somehow already running (e.g. its
+					# window got closed without the session itself
+					# ending), just attach to whatever it already has;
+					# otherwise create it fresh with the right layout.
+					# Deliberately NOT `--session dev --layout dev` here
+					# -- that combination doesn't create anything either
+					# (confirmed live: "There is no active session!").
+					local zj_cmd
+					if zellij list-sessions --short 2>/dev/null | grep -qx dev; then
+						zj_cmd="zellij attach dev"
+					else
+						zj_cmd="zellij --session dev --new-session-with-layout dev"
+					fi
 					# Ghostty's own `detect` single-instance logic disables
 					# single-instance mode whenever CLI args are passed
 					# (confirmed in its own docs), so this always spawns a
@@ -70,7 +88,7 @@ let
 					# class also drives the window rule in
 					# home/hypr/layerrules.lua that puts this on its own
 					# hidden special workspace.
-					ghostty --class="$DEV_CLASS" -e sh -c "cd '$repo_path' && exec zellij attach --create dev" >/dev/null 2>&1 &
+					ghostty --class="$DEV_CLASS" -e sh -c "cd '$repo_path' && exec $zj_cmd" >/dev/null 2>&1 &
 					disown
 				fi
 
