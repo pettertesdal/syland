@@ -1,5 +1,12 @@
 command = zsh
 
+# Font
+font-family = ProggyClean Nerd Font
+# Window
+window-decoration = true
+window-inherit-working-directory = false
+background-opacity = 0.95
+unfocused-split-opacity = 0.85
 # Colors come from syland-theme-apply. New windows pick these up
 # automatically; already-open ones need this keybind (no CLI exists to
 # force-reload a running ghostty window).
