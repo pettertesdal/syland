@@ -1,8 +1,8 @@
 # syland-context: finishes the project-switching/docs-reading scaffolding
-# that's already sitting in home/hypr/keybinds.lua (SUPER+C/P/ALT+P call
-# `syland-context switch`/`open pdf`/`open notes`, but nothing implementing
-# it existed until now -- same situation syland-theme-apply was in before
-# it got built).
+# that's already sitting in home/hypr/keybinds.lua and in
+# src/popups/Picker.qml's "Context" category (which already calls `list`
+# and `set <path>` -- nothing implementing either existed until now, same
+# situation syland-theme-apply was in before it got built).
 #
 # Reads the real ~/projects/<category>/<name>/{documents/,repos/<repo>/}
 # convention already in use (e.g. ~/projects/work/SeaR). "documents/" holds
@@ -15,49 +15,98 @@ let
 		# prepends runtimeInputs onto PATH rather than replacing it, so
 		# plain `nvim` still resolves to the nvf-configured binary already
 		# on the normal home-manager profile PATH.
-		runtimeInputs = [ pkgs.fzf pkgs.jq pkgs.findutils pkgs.coreutils pkgs.gnused pkgs.zellij pkgs.zathura pkgs.ghostty ];
+		runtimeInputs = [ pkgs.fzf pkgs.jq pkgs.findutils pkgs.coreutils pkgs.zellij pkgs.zathura pkgs.ghostty pkgs.hyprland ];
 		text = ''
 			PROJECTS_DIR="$HOME/projects"
 			STATE_DIR="$HOME/.config/syland/context"
 			STATE_FILE="$STATE_DIR/state.json"
+			DEV_CLASS="com.syland.devterm"
 			mkdir -p "$STATE_DIR"
 
 			require_state() {
 				if [ ! -f "$STATE_FILE" ]; then
-					echo "syland-context: no active project -- run 'syland-context switch' first" >&2
+					echo "syland-context: no active project -- pick one from the menu (Context), or run 'syland-context set <repo_path>'" >&2
 					exit 1
+				fi
+			}
+
+			# ensure_devterm <repo_path> -- makes the dev terminal show
+			# this project, reusing the existing window/session if one is
+			# already open instead of spawning a second one.
+			#
+			# Both branches below were verified live, not assumed:
+			# - Closing a session's last tab kills the whole session, so
+			#   new tabs are always created *before* the old ones are
+			#   closed (confirmed live: doing it the other way around
+			#   destroyed the session).
+			# - `new-tab --layout <name>` does NOT replicate a multi-tab
+			#   layout file (confirmed live: produced exactly one tab and
+			#   even ignored --name) -- hence two explicit new-tab calls.
+			# - `action switch-session`/`detach`, and session
+			#   resurrection, were both tried live as simpler
+			#   alternatives and rejected: switch-session sent to an
+			#   already-attached session had no visible effect at all
+			#   (confirmed via screenshot), and closed sessions didn't
+			#   show up as resurrectable even with session_serialization
+			#   explicitly enabled.
+			ensure_devterm() {
+				local repo_path="$1"
+				if hyprctl clients -j | jq -e --arg class "$DEV_CLASS" '.[] | select(.class == $class)' >/dev/null 2>&1; then
+					local old_tab_ids
+					mapfile -t old_tab_ids < <(zellij --session dev action list-tabs -j | jq -r '.[].tab_id')
+					zellij --session dev action new-tab --cwd "$repo_path" --name editor -- nvim
+					zellij --session dev action new-tab --cwd "$repo_path" --name shell
+					local id
+					for id in "''${old_tab_ids[@]}"; do
+						zellij --session dev action close-tab --tab-id "$id"
+					done
+				else
+					# Ghostty's own `detect` single-instance logic disables
+					# single-instance mode whenever CLI args are passed
+					# (confirmed in its own docs), so this always spawns a
+					# genuinely separate, fresh process -- never proxied
+					# to the long-running shared terminal instance the
+					# plain "open terminal" keybind uses. The dedicated
+					# class also drives the window rule in
+					# home/hypr/layerrules.lua that puts this on its own
+					# hidden special workspace.
+					ghostty --class="$DEV_CLASS" -e sh -c "cd '$repo_path' && exec zellij attach --create dev" >/dev/null 2>&1 &
+					disown
+				fi
+
+				# Toggling is a toggle, not a "show" -- only fire it if
+				# the special workspace isn't already the visible one, so
+				# repeated calls never accidentally hide it. Confirmed
+				# live: specialWorkspace.name is "" when hidden,
+				# "special:dev" when shown.
+				local current_special
+				current_special=$(hyprctl monitors -j | jq -r '.[0].specialWorkspace.name')
+				if [ "$current_special" != "special:dev" ]; then
+					hyprctl dispatch 'hl.dsp.workspace.toggle_special("dev")' >/dev/null 2>&1 || true
 				fi
 			}
 
 			cmd="''${1:-}"
 			case "$cmd" in
-				switch)
-					# category/name dirs, e.g. "work/SeaR" -- matches the
-					# real ~/projects/<category>/<name>/{documents,repos}
-					# convention already in use.
-					project=$(find "$PROJECTS_DIR" -mindepth 2 -maxdepth 2 -type d \
-						| sed "s#^$PROJECTS_DIR/##" \
+				list)
+					# One line per actual repo (not per project folder) --
+					# matches src/popups/Picker.qml's contextListProc,
+					# which expects {label, path} per line.
+					find "$PROJECTS_DIR" -mindepth 4 -maxdepth 4 -type d -path '*/repos/*' 2>/dev/null \
 						| sort \
-						| fzf --prompt="project> " --select-1 --exit-0)
-					[ -n "$project" ] || exit 0
-					category="''${project%%/*}"
-					name="''${project#*/}"
-					project_root="$PROJECTS_DIR/$project"
-
-					mapfile -t repos < <(find "$project_root/repos" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
-					case "''${#repos[@]}" in
-						0)
-							echo "syland-context: no repos/ found under $project_root" >&2
-							exit 1
-							;;
-						1)
-							repo_path="''${repos[0]}"
-							;;
-						*)
-							repo_path=$(printf '%s\n' "''${repos[@]}" | fzf --prompt="repo> ")
-							[ -n "$repo_path" ] || exit 0
-							;;
-					esac
+						| while read -r repo_path; do
+							rel="''${repo_path#"$PROJECTS_DIR"/}"
+							label="''${rel//\/repos\//\/}"
+							jq -nc --arg label "$label" --arg path "$repo_path" '{label:$label, path:$path}'
+						done
+					;;
+				set)
+					repo_path="''${2:?usage: syland-context set <repo_path>}"
+					# Walks back up from <PROJECTS_DIR>/<category>/<name>/repos/<repo>.
+					project_root=$(dirname "$(dirname "$repo_path")")
+					rel="''${project_root#"$PROJECTS_DIR"/}"
+					category="''${rel%%/*}"
+					name="''${rel#*/}"
 
 					tmp=$(mktemp)
 					jq -nc --arg category "$category" --arg name "$name" \
@@ -65,24 +114,7 @@ let
 						'{category:$category, name:$name, project_root:$project_root, repo_path:$repo_path}' > "$tmp"
 					mv "$tmp" "$STATE_FILE"
 
-					# Idempotent whether or not a "dev" zellij session
-					# already exists: `attach --create` attaches if it's
-					# already running, creates it (using config.kdl's own
-					# default_layout = "dev") otherwise. NOTE: plain
-					# `--session NAME` is NOT for attaching to an existing
-					# session -- its own --help says it "specifies the
-					# name of a *new* session"; attaching-or-creating is
-					# specifically what `attach --create` does (confirmed
-					# live: `--session dev --layout dev` alone produced a
-					# "There is no active session!" error instead).
-					# Ghostty's own `detect` single-instance logic disables
-					# single-instance mode whenever CLI args are passed
-					# (confirmed in its own docs), so this always spawns a
-					# genuinely separate, fresh process -- never proxied to
-					# the long-running shared terminal instance the plain
-					# "open terminal" keybind uses.
-					ghostty -e sh -c "cd '$repo_path' && exec zellij attach --create dev" >/dev/null 2>&1 &
-					disown
+					ensure_devterm "$repo_path"
 					;;
 				open)
 					require_state
@@ -119,8 +151,11 @@ let
 							ghostty -e nvim "$file" >/dev/null 2>&1 &
 							disown
 							;;
+						project)
+							ensure_devterm "$repo_path"
+							;;
 						*)
-							echo "usage: syland-context open {pdf|notes|docs}" >&2
+							echo "usage: syland-context open {pdf|notes|docs|project}" >&2
 							exit 1
 							;;
 					esac
@@ -133,7 +168,7 @@ let
 					fi
 					;;
 				*)
-					echo "usage: syland-context {switch|open {pdf|notes|docs}|current}" >&2
+					echo "usage: syland-context {list|set <repo_path>|open {pdf|notes|docs|project}|current}" >&2
 					exit 1
 					;;
 			esac
