@@ -13,5 +13,6 @@
 		kew
 		cliamp
 		devenv
+		zathura
 	];
 }

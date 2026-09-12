@@ -1,0 +1,85 @@
+# nvf, standalone installation mode (per the user's own README TODO
+# wording) -- nvf.lib.neovimConfiguration builds a plain, redistributable
+# neovim package rather than wiring nvf in as a home-manager module
+# (that's a different, separate installation mode nvf also supports, not
+# this one). See flake.nix for how the `nvf` flake input reaches this
+# file (threaded through extraSpecialArgs, same mechanism already used
+# for pinsData/stableChannel).
+{ pkgs, nvf, ... }:
+let
+	configModule = {
+		config.vim = {
+			viAlias = false;
+			vimAlias = true;
+
+			binds.whichKey.enable = true;
+			fzf-lua.enable = true; # reuses the fzf binary already installed via programs.fzf
+			statusline.lualine.enable = true;
+			treesitter.enable = true;
+			autocomplete.nvim-cmp.enable = true;
+
+			lsp = {
+				enable = true;
+				formatOnSave = true;
+			};
+
+			languages = {
+				nix.enable = true;
+				markdown = {
+					enable = true;
+					extensions.render-markdown-nvim.enable = true;
+				};
+				csharp.enable = true; # DscSimulation and future .NET work
+			};
+
+			# claudecode.nvim: implements the real WebSocket/MCP protocol
+			# Claude Code's official IDE integrations use (writes
+			# ~/.claude/ide/*.lock, the `claude` CLI -- already installed
+			# via programs.claude-code in home/shell.nix -- auto-connects
+			# to it). Live selection/file/cursor context sync and native
+			# diffs, not just a terminal wrapper. Depends on snacks.nvim.
+			extraPlugins = {
+				snacks-nvim = {
+					package = pkgs.vimPlugins.snacks-nvim;
+					setup = "require('snacks').setup({})";
+				};
+				claudecode-nvim = {
+					package = pkgs.vimPlugins.claudecode-nvim;
+					setup = "require('claudecode').setup({})";
+					after = [ "snacks-nvim" ];
+				};
+			};
+
+			# Claude keymaps taken from claudecode.nvim's own README.
+			keymaps = [
+				{ key = "<leader>ac"; mode = "n"; desc = "Toggle Claude";      action = "<cmd>ClaudeCode<cr>"; }
+				{ key = "<leader>af"; mode = "n"; desc = "Focus Claude";       action = "<cmd>ClaudeCodeFocus<cr>"; }
+				{ key = "<leader>ab"; mode = "n"; desc = "Add current buffer"; action = "<cmd>ClaudeCodeAdd %<cr>"; }
+				{ key = "<leader>as"; mode = "v"; desc = "Send selection";     action = "<cmd>ClaudeCodeSend<cr>"; }
+				{ key = "<leader>aa"; mode = "n"; desc = "Accept Claude diff"; action = "<cmd>ClaudeCodeDiffAccept<cr>"; }
+				{ key = "<leader>ad"; mode = "n"; desc = "Deny Claude diff";   action = "<cmd>ClaudeCodeDiffDeny<cr>"; }
+				{
+					key = "<leader>tt"; mode = "n"; lua = true;
+					desc = "Run project tests (devenv test)";
+					# devenv's own CLI subcommand, not the bare `test` PATH
+					# script a project's scripts.test puts on PATH --
+					# avoids colliding with the coreutils test/[ binary.
+					# Language-agnostic: every devenv-based project gets
+					# this the same way, no per-language adapter needed.
+					action = ''function() vim.cmd("botright 15split | terminal devenv test") vim.cmd("startinsert") end'';
+				}
+			];
+		};
+	};
+
+	customNeovim = nvf.lib.neovimConfiguration {
+		inherit pkgs; # reuse the already-pinned global pkgs, not a second nixpkgs evaluation
+		modules = [ configModule ];
+	};
+in {
+	home.packages = [ customNeovim.neovim ];
+	# The standalone installation route has no defaultEditor convenience
+	# option (that's specific to nvf's home-manager-module mode), so set
+	# it explicitly.
+	home.sessionVariables.EDITOR = "nvim";
+}

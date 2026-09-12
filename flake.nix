@@ -8,9 +8,13 @@
 			inputs.nixpkgs.follows = "nixpkgs";
 		};
 		pins.url = "path:./pins";
+		nvf = {
+			url = "github:notashelf/nvf";
+			inputs.nixpkgs.follows = "nixpkgs";
+		};
 	};
 
-	outputs = { self, nixpkgs, home-manager, pins, ...}:
+	outputs = { self, nixpkgs, home-manager, pins, nvf, ...}:
 	let
 		system = "x86_64-linux";
 		stableChannel = "26.05"; # keep in sync with the nixpkgs input's release above
@@ -27,7 +31,7 @@
 							useUserPackages = true;
 							users.tesdap = import ./home.nix;
 							backupFileExtension = "backup";
-							extraSpecialArgs = { inherit stableChannel; pinsData = pins.pinsData; };
+							extraSpecialArgs = { inherit stableChannel nvf; pinsData = pins.pinsData; };
 						};
 					}
 			];

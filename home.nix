@@ -1,7 +1,7 @@
 # User-level (home-manager) configuration for tesdap, split by concern into
 # home/. configuration.nix + config/ own everything system-level instead —
 # see README.txt.
-{ config, pkgs, lib, pinsData, stableChannel, ... }:
+{ config, pkgs, lib, pinsData, stableChannel, nvf, ... }:
 
 {
 	imports = [
@@ -13,6 +13,9 @@
 		./home/dotfiles.nix
 		./home/wallpaper.nix
 		./home/theme-apply.nix
+		./home/nvf.nix
+		./home/zellij.nix
+		./home/syland-context.nix
 	];
 
 	home.username = "tesdap";
