@@ -1,2 +1,7 @@
 command = zsh
 
+# Colors come from syland-theme-apply. New windows pick these up
+# automatically; already-open ones need this keybind (no CLI exists to
+# force-reload a running ghostty window).
+config-file = /home/tesdap/.config/syland/themes/ghostty.generated
+keybind = ctrl+shift+,=reload_config

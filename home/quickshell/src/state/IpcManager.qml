@@ -66,4 +66,14 @@ QtObject {
             Popups.bluetoothPanelOpen = !Popups.bluetoothPanelOpen
         }
     }
+
+    // Bind to a Hyprland keybind the same way, e.g.:
+    //   hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("qs ipc call theme-switcher toggle"), { description = "Toggle theme switcher" })
+    property IpcHandler _themeSwitcherHandler: IpcHandler {
+        target: "theme-switcher"
+
+        function toggle(): void {
+            Popups.themeSwitcherOpen = !Popups.themeSwitcherOpen
+        }
+    }
 }

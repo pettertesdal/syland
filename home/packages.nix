@@ -9,7 +9,6 @@
 		quickshell
 		jq
 		yq
-		fzf
 		libnotify
 		kew
 		cliamp

@@ -12,6 +12,7 @@
 		./home/rmpc.nix
 		./home/dotfiles.nix
 		./home/wallpaper.nix
+		./home/theme-apply.nix
 	];
 
 	home.username = "tesdap";

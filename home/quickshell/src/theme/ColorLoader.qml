@@ -13,11 +13,13 @@ import Quickshell.Io
 //      This means you never have to remember to run it by hand after
 //      editing colors.toml — the shell does it every time it starts.
 //   2. Watch that generated file with a FileView (watchChanges: true).
-//      Whenever it changes on disk — including step 1's own write, and
-//      any later manual re-run of syland-theme-apply — QML re-reads it
-//      and every property bound to these colors updates automatically.
-//      No manual "refresh" call anywhere: that's plain property binding
-//      propagation, the same mechanism used everywhere else in Quickshell.
+//      watchChanges only fires fileChanged() when the file changes on
+//      disk — it does NOT re-read the content on its own, so the
+//      fileView below explicitly calls reload() in response (confirmed
+//      live: without this, colors stayed stale after syland-theme-apply
+//      ran until quickshell was killed and relaunched). reload() updates
+//      text(), which fires onTextChanged, which is what actually updates
+//      every property bound to these colors.
 QtObject {
     id: root
 
@@ -41,8 +43,21 @@ QtObject {
     }
 
     property FileView fileView: FileView {
+        id: fileView
+
         path: Quickshell.env("HOME") + "/.config/syland/themes/quickshell.generated"
         watchChanges: true
+
+        // watchChanges alone only fires fileChanged() — it does NOT
+        // re-read the file into text()/data() on its own (confirmed
+        // against Quickshell.Io's own qmltypes: fileChanged is a signal
+        // distinct from textChanged/dataChanged, and FileView exposes a
+        // separate reload() method). Without this handler, an external
+        // rewrite of the file (exactly what syland-theme-apply does)
+        // updates the file on disk but onTextChanged below never fires —
+        // confirmed live: colors stayed stale after `syland-theme-apply
+        // apply <theme>` until quickshell was killed and relaunched.
+        onFileChanged: reload()
 
         // syland-theme-apply always prepends a "# managed by syland ..."
         // comment line before the JSON payload (see
@@ -73,7 +88,7 @@ QtObject {
                 if (colors.green !== undefined) root.green = colors.green
                 if (colors.yellow !== undefined) root.yellow = colors.yellow
             } catch (e) {
-                console.warn("[ColorLoader] couldn't parse", path, e)
+                console.warn("[ColorLoader] couldn't parse", fileView.path, e)
             }
         }
     }

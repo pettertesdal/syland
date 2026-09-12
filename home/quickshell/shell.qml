@@ -28,6 +28,7 @@ ShellRoot {
                 ExamplePanel { screen: modelData }
                 NotificationCenter { screen: modelData }
                 NotificationToast { screen: modelData }
+                ThemeSwitcher { screen: modelData }
 
                 Picker {
                     targetWindow: centerModule

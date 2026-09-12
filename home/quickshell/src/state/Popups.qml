@@ -29,10 +29,15 @@ QtObject {
     // "growing" for advanced bluetooth options — is open.
     property bool bluetoothPanelOpen: false
 
+    // Whether popups/ThemeSwitcher.qml (sliding theme/wallpaper list) is
+    // open. Same pattern again.
+    property bool themeSwitcherOpen: false
+
     function closeAll() {
         menuOpen = false
         examplePanelOpen = false
         notificationCenterOpen = false
         bluetoothPanelOpen = false
+        themeSwitcherOpen = false
     }
 }
