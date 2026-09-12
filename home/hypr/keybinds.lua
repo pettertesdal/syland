@@ -22,7 +22,8 @@ hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("syland-context open pdf"), { descrip
 hl.bind(mainMod .. " + ALT + P", hl.dsp.exec_cmd("syland-context open notes"), { description = "Open context notes" })
 hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("qs ipc call notification-center toggle"), { description = "Toggle notification center" })
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("qs ipc call bluetooth-panel toggle"), { description = "Toggle bluetooth panel" })
-hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("qs ipc call theme-switcher toggle"), { description = "Toggle bluetooth panel" })
+hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("qs ipc call theme-switcher toggle"), { description = "Toggle theme switcher panel" })
+hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("syland-theme-apply toggle"), { description = "Toggle variation switch" })
 
 -- workspaces — VERIFY: exact workspace-switch/move dispatcher names
 for i = 1, 10 do
