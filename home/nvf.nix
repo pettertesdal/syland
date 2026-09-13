@@ -5,6 +5,24 @@ let
       viAlias = false;
       vimAlias = true;
 
+      git.enable = true;
+
+      utility.oil-nvim = {
+        enable = true;
+        gitStatus.enable = true;
+      };
+
+      theme = {
+        transparent = true;
+      };
+
+      options = {
+        # The rendered length
+        tabstop = 2;
+        # The length you indent with >>
+        shiftwidth = 2;
+      };
+
       binds.whichKey.enable = true;
       fzf-lua.enable = true; # reuses the fzf binary already installed via programs.fzf
       statusline.lualine.enable = true;
@@ -86,12 +104,57 @@ let
           mode = "n";
           lua = true;
           desc = "Run project tests (devenv test)";
-          # devenv's own CLI subcommand, not the bare `test` PATH
-          # script a project's scripts.test puts on PATH --
-          # avoids colliding with the coreutils test/[ binary.
-          # Language-agnostic: every devenv-based project gets
-          # this the same way, no per-language adapter needed.
           action = ''function() vim.cmd("botright 15split | terminal devenv test") vim.cmd("startinsert") end'';
+        }
+        {
+          key = "<leader>e";
+          mode = "n";
+          desc = "File explorer";
+          action = "<cmd>Oil<cr>";
+        }
+        {
+          key = "<leader>ff";
+          mode = "n";
+          desc = "File files";
+          action = "<cmd>FzfLua files<cr>";
+        }
+        {
+          key = "<leader>gh";
+          mode = "n";
+          desc = "Toggle git hunk signs";
+          lua = true;
+          action = "function() require('gitsigns').toggle_signs() end";
+        }
+        {
+          # Fugitive keybinds
+          key = "<leader>gs";
+          mode = "n";
+          desc = "Git status";
+          action = "<cmd>Git<cr>";
+        }
+        {
+          key = "<leader>gd";
+          mode = "n";
+          desc = "Diff current file against index";
+          action = "<cmd>Gvdiffsplit<cr>";
+        }
+        {
+          key = "<leader>gl";
+          mode = "n";
+          desc = "File history log";
+          action = "<cmd>Gclog<cr>";
+        }
+        {
+          key = "<leader>gp";
+          mode = "n";
+          desc = "Git push";
+          action = "<cmd>Git push<cr>";
+        }
+        {
+          key = "<leader>gP";
+          mode = "n";
+          desc = "Git pull";
+          action = "<cmd>Git pull<cr>";
         }
       ];
     };

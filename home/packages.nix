@@ -5,6 +5,7 @@
   # (vim, git only) live in config/packages.nix instead — see README.txt.
   home.packages = with pkgs; [
     kitty
+    gh
     ghostty
     quickshell
     jq
