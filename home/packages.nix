@@ -6,6 +6,7 @@
   home.packages = with pkgs; [
     kitty
     gh
+    mdcat
     ghostty
     quickshell
     jq
