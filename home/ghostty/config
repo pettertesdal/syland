@@ -13,6 +13,10 @@ unfocused-split-opacity = 0.10
 # Cursor
 cursor-style = block
 
+# Comet-like trailing cursor (kitty-style). Source:
+# https://github.com/sahaj-b/ghostty-cursor-shaders
+custom-shader = shaders/cursor_tail.glsl
+
 # Colors come from syland-theme-apply. New windows pick these up
 # automatically; already-open ones need this keybind (no CLI exists to
 # force-reload a running ghostty window).

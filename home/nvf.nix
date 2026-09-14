@@ -12,9 +12,9 @@ let
         gitStatus.enable = true;
       };
 
-      theme = {
-        transparent = true;
-      };
+      luaConfigRC.syland-theme = ''
+        dofile("${./nvim/syland-theme.lua}")
+      '';
 
       options = {
         # The rendered length
