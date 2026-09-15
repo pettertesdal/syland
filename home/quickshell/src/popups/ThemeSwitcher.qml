@@ -33,11 +33,26 @@ AnimatedPopup {
     // 0 = theme list, 1 = image list for selectedTheme
     property int viewLevel: 0
 
-    onOpenFlagChanged: {
-        if (openFlag) {
-            viewLevel = 0
-            listThemesProc.exec(["syland-theme-apply", "list-themes"])
-            currentProc.exec(["syland-theme-apply", "current"])
+    // Consolidated into one Connections block rather than the plain
+    // onOpenFlagChanged this used to be (still works fine alongside
+    // AnimatedPopup's own internal handler of the same name — this file
+    // is live proof of that — but Connections is now the pattern every
+    // sibling popup uses, and folding the settle trigger in here keeps
+    // "what happens on open" in one place instead of two separate
+    // handlers with an unclear relative order).
+    Connections {
+        target: root
+        function onOpenFlagChanged() {
+            if (root.openFlag) {
+                viewLevel = 0
+                listThemesProc.exec(["syland-theme-apply", "list-themes"])
+                currentProc.exec(["syland-theme-apply", "current"])
+                closeAnim.stop()
+                openAnim.restart()
+            } else {
+                openAnim.stop()
+                closeAnim.restart()
+            }
         }
     }
 
@@ -101,10 +116,67 @@ AnimatedPopup {
         anchors.bottomMargin: Metrics.borderWidth
         clip: true
 
-        width: root.openFlag ? root.panelWidth : 0
-        height: root.openFlag ? root.panelHeight : 0
-        Behavior on width { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
-        Behavior on height { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
+        width: 0
+        height: 0
+
+        // Settle motion + actuation flash — same shape as
+        // popups/ExamplePanel.qml's own (see that file's comment for the
+        // reasoning); no geometry-race guard needed here either, same
+        // reason: panelWidth/panelHeight are fixed constants.
+        ParallelAnimation {
+            id: openAnim
+            onFinished: sizer.flashBorder()
+            SequentialAnimation {
+                NumberAnimation {
+                    target: sizer; property: "width"
+                    to: root.panelWidth + Metrics.settleOvershoot
+                    duration: Metrics.animDuration
+                    easing.type: Easing.Linear
+                }
+                NumberAnimation {
+                    target: sizer; property: "width"
+                    to: root.panelWidth
+                    duration: Metrics.settleDuration
+                    easing.type: Easing.Linear
+                }
+            }
+            SequentialAnimation {
+                NumberAnimation {
+                    target: sizer; property: "height"
+                    to: root.panelHeight + Metrics.settleOvershoot
+                    duration: Metrics.animDuration
+                    easing.type: Easing.Linear
+                }
+                NumberAnimation {
+                    target: sizer; property: "height"
+                    to: root.panelHeight
+                    duration: Metrics.settleDuration
+                    easing.type: Easing.Linear
+                }
+            }
+        }
+
+        ParallelAnimation {
+            id: closeAnim
+            NumberAnimation { target: sizer; property: "width"; to: 0; duration: Metrics.animDuration; easing.type: Easing.Linear }
+            NumberAnimation { target: sizer; property: "height"; to: 0; duration: Metrics.animDuration; easing.type: Easing.Linear }
+        }
+
+        property color borderColor: Theme.foreground
+
+        function flashBorder() {
+            flashFade.stop()
+            borderColor = Theme.accent
+            flashFade.restart()
+        }
+
+        ColorAnimation {
+            id: flashFade
+            target: sizer; property: "borderColor"
+            to: Theme.foreground
+            duration: Metrics.settleDuration * 3
+            easing.type: Easing.Linear
+        }
 
         MouseArea { anchors.fill: parent; onClicked: {} }
 
@@ -112,7 +184,7 @@ AnimatedPopup {
             anchors.fill: parent
             color: Theme.background
             border.width: 1
-            border.color: Theme.foreground
+            border.color: sizer.borderColor
         }
 
         // Two-panel horizontal slider: an Item 2x panelWidth wide,

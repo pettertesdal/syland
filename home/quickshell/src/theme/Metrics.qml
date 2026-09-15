@@ -46,6 +46,17 @@ QtObject {
     // components/AnimatedPopup.qml's closeTimer).
     property int animDuration: 120
 
+    // Two-stage "slide + settle" motion (pilot: popups/TodoPanel.qml) —
+    // an arriving panel slides settleOvershoot px past its resting
+    // position, then snaps back over settleDuration. Two chained linear
+    // NumberAnimations, not one eased curve (no Easing.OutBack): the
+    // comment on animDuration above already commits this shell to linear
+    // motion everywhere, and this keeps that true segment-by-segment
+    // while still reading as something arriving and catching rather than
+    // gliding to a stop.
+    property int settleOvershoot: 6
+    property int settleDuration: 45
+
     property string fontFamily: "ProggyClean Nerd Font Mono"
     property int fontSizeSmall: 11
     property int fontSizeRegular: 13

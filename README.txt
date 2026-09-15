@@ -18,5 +18,6 @@ config/.
 
 # TODO
 - Add nvf to configure nvim as a standalone installation
-- Add project management, making projects quickly viewable, along with their documentation.
 - JellyfinTUI ?
+
+Project management (syland-context, syland-todo) is done — see CLAUDE.md.

@@ -30,19 +30,102 @@ AnimatedPopup {
 
     readonly property int panelWidth: 380
 
+    // Settle motion + actuation flash + first-open geometry-race guard —
+    // ported verbatim from popups/TodoPanel.qml (the pilot for this
+    // pattern) once it was confirmed working live there. See that file's
+    // own comments for the full reasoning behind each piece; kept
+    // identical here rather than re-explained, since this is a straight
+    // port of the same x-slide-from-right geometry, not an adaptation.
+    Connections {
+        target: root
+        function onOpenFlagChanged() {
+            if (root.openFlag) {
+                closeAnim.stop()
+                panel.beginOpen()
+            } else {
+                openAnim.stop()
+                pendingOpen.enabled = false
+                closeAnim.restart()
+            }
+        }
+    }
+
     Item {
         id: panel
         width: root.panelWidth
         // A gap between the panel's bottom and the screen's true bottom
         // edge, sized to match the panel's own width.
         height: parent.height - root.panelWidth
-        x: root.openFlag ? (parent.width - width) : parent.width
-        Behavior on x { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
+
+        readonly property int restX: parent.width - width
+        readonly property int hiddenX: parent.width
+        x: hiddenX
+
+        SequentialAnimation {
+            id: openAnim
+            onFinished: panel.flashBorder()
+            NumberAnimation {
+                target: panel; property: "x"
+                to: panel.restX - Metrics.settleOvershoot
+                duration: Metrics.animDuration
+                easing.type: Easing.Linear
+            }
+            NumberAnimation {
+                target: panel; property: "x"
+                to: panel.restX
+                duration: Metrics.settleDuration
+                easing.type: Easing.Linear
+            }
+        }
+
+        NumberAnimation {
+            id: closeAnim
+            target: panel; property: "x"
+            to: panel.hiddenX
+            duration: Metrics.animDuration
+            easing.type: Easing.Linear
+        }
+
+        function beginOpen() {
+            if (parent.width >= width) {
+                openAnim.restart()
+            } else {
+                pendingOpen.enabled = true
+            }
+        }
+
+        Connections {
+            id: pendingOpen
+            target: panel.parent
+            enabled: false
+            function onWidthChanged() {
+                if (root.openFlag && panel.parent.width >= panel.width) {
+                    pendingOpen.enabled = false
+                    openAnim.restart()
+                }
+            }
+        }
+
+        property color borderColor: Theme.foreground
+
+        function flashBorder() {
+            flashFade.stop()
+            borderColor = Theme.accent
+            flashFade.restart()
+        }
+
+        ColorAnimation {
+            id: flashFade
+            target: panel; property: "borderColor"
+            to: Theme.foreground
+            duration: Metrics.settleDuration * 3
+            easing.type: Easing.Linear
+        }
 
         SeamPanelShape {
             anchors.fill: parent
             fillColor: Theme.background
-            strokeColor: Theme.foreground
+            strokeColor: panel.borderColor
         }
 
         // Swallow clicks on the panel itself so they don't fall through

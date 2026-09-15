@@ -27,6 +27,27 @@ AnimatedPopup {
     readonly property int panelWidth: 420
     readonly property int panelHeight: 240
 
+    // Settle motion + actuation flash, adapted from popups/TodoPanel.qml
+    // (the pilot for this pattern) to a grow-from-0 panel instead of an
+    // x-slide — two axes (width and height) overshoot and settle
+    // together via a ParallelAnimation of two settle SequentialAnimations,
+    // rather than one axis. No geometry-race guard here unlike
+    // TodoPanel/NotificationCenter: panelWidth/panelHeight are fixed
+    // constants, not derived from parent.width/height, so there's nothing
+    // that can still be stale on the very first open.
+    Connections {
+        target: root
+        function onOpenFlagChanged() {
+            if (root.openFlag) {
+                closeAnim.stop()
+                openAnim.restart()
+            } else {
+                openAnim.stop()
+                closeAnim.restart()
+            }
+        }
+    }
+
     Item {
         id: sizer
         anchors.horizontalCenter: parent.horizontalCenter
@@ -37,10 +58,63 @@ AnimatedPopup {
         anchors.bottomMargin: Metrics.borderWidth
         clip: true
 
-        width: root.openFlag ? root.panelWidth : 0
-        height: root.openFlag ? root.panelHeight : 0
-        Behavior on width { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
-        Behavior on height { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
+        width: 0
+        height: 0
+
+        ParallelAnimation {
+            id: openAnim
+            onFinished: sizer.flashBorder()
+            SequentialAnimation {
+                NumberAnimation {
+                    target: sizer; property: "width"
+                    to: root.panelWidth + Metrics.settleOvershoot
+                    duration: Metrics.animDuration
+                    easing.type: Easing.Linear
+                }
+                NumberAnimation {
+                    target: sizer; property: "width"
+                    to: root.panelWidth
+                    duration: Metrics.settleDuration
+                    easing.type: Easing.Linear
+                }
+            }
+            SequentialAnimation {
+                NumberAnimation {
+                    target: sizer; property: "height"
+                    to: root.panelHeight + Metrics.settleOvershoot
+                    duration: Metrics.animDuration
+                    easing.type: Easing.Linear
+                }
+                NumberAnimation {
+                    target: sizer; property: "height"
+                    to: root.panelHeight
+                    duration: Metrics.settleDuration
+                    easing.type: Easing.Linear
+                }
+            }
+        }
+
+        ParallelAnimation {
+            id: closeAnim
+            NumberAnimation { target: sizer; property: "width"; to: 0; duration: Metrics.animDuration; easing.type: Easing.Linear }
+            NumberAnimation { target: sizer; property: "height"; to: 0; duration: Metrics.animDuration; easing.type: Easing.Linear }
+        }
+
+        property color borderColor: Theme.foreground
+
+        function flashBorder() {
+            flashFade.stop()
+            borderColor = Theme.accent
+            flashFade.restart()
+        }
+
+        ColorAnimation {
+            id: flashFade
+            target: sizer; property: "borderColor"
+            to: Theme.foreground
+            duration: Metrics.settleDuration * 3
+            easing.type: Easing.Linear
+        }
 
         // Swallow clicks on the panel itself so they don't fall through
         // to AnimatedPopup's full-window dismiss MouseArea.
@@ -50,7 +124,7 @@ AnimatedPopup {
             anchors.fill: parent
             color: Theme.background
             border.width: 1
-            border.color: Theme.foreground
+            border.color: sizer.borderColor
         }
 
         Item {

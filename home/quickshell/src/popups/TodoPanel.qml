@@ -41,9 +41,19 @@ AnimatedPopup {
     Connections {
         target: root
         function onOpenFlagChanged() {
+            // openAnim/closeAnim are two independent Animation objects
+            // now (not one Behavior, which would retarget a still-running
+            // transition automatically) -- stop() the other one first so
+            // rapid toggling can't leave both driving panel.x at once.
             if (root.openFlag) {
                 TodoService.refresh()
                 addField.forceActiveFocus()
+                closeAnim.stop()
+                panel.beginOpen()
+            } else {
+                openAnim.stop()
+                pendingOpen.enabled = false
+                closeAnim.restart()
             }
         }
     }
@@ -96,13 +106,144 @@ AnimatedPopup {
         id: panel
         width: root.panelWidth
         height: parent.height - root.panelWidth
-        x: root.openFlag ? (parent.width - width) : parent.width
-        Behavior on x { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
+
+        readonly property int restX: parent.width - width  // resting position, panel open
+        readonly property int hiddenX: parent.width         // fully offscreen, panel closed
+
+        // Driven entirely by openAnim/closeAnim below, not a live binding
+        // + Behavior — the first attempt at this relied on a Behavior
+        // auto-inferring target/property for NumberAnimations nested
+        // inside a SequentialAnimation, which doesn't reliably happen:
+        // live testing showed the panel flying to x=0 (the screen's true
+        // left edge) every time, exactly the "a missing/undefined value
+        // becomes NaN, and Qt coerces NaN to 0" failure shape
+        // Metrics.qml's own animDuration comment already documents for a
+        // different property. Explicit target/property on every
+        // animation below removes that inference entirely rather than
+        // trying to get the implicit version right a second time.
+        x: hiddenX
+
+        // Two linear segments, not one eased curve — see
+        // Metrics.settleOvershoot's own comment for why. Only the open
+        // path overshoots; closing has nothing to "lock into," it just
+        // slides off toward hiddenX in one stage.
+        //
+        // VERIFY: fixed against a concrete reported bug (see above), but
+        // still not visually confirmed live — no Quickshell runtime in
+        // the environment this was written in. Rebuild and check the
+        // feel again, not just that it no longer flies to the left.
+        SequentialAnimation {
+            id: openAnim
+            // On the outer SequentialAnimation, not the nested second
+            // NumberAnimation — after the target/property inference bug
+            // above, nested-animation signal semantics aren't something
+            // to lean on a second time without being sure; the outer
+            // animation's own finished() is unambiguous regardless.
+            onFinished: panel.flashBorder()
+            NumberAnimation {
+                target: panel; property: "x"
+                to: panel.restX - Metrics.settleOvershoot
+                duration: Metrics.animDuration
+                easing.type: Easing.Linear
+            }
+            NumberAnimation {
+                target: panel; property: "x"
+                to: panel.restX
+                duration: Metrics.settleDuration
+                easing.type: Easing.Linear
+            }
+        }
+
+        NumberAnimation {
+            id: closeAnim
+            target: panel; property: "x"
+            to: panel.hiddenX
+            duration: Metrics.animDuration
+            easing.type: Easing.Linear
+        }
+
+        // Root cause of the "appears from the left" bug reported live on
+        // the very first open of any popup in this shell (not specific
+        // to this file -- NotificationCenter's older single-stage
+        // Behavior does the same thing, just self-heals less visibly):
+        // AnimatedPopup's PanelWindow starts with visible: false and
+        // likely isn't mapped by the compositor -- and so doesn't have
+        // real width/height -- until openFlag first flips true, which is
+        // exactly when this panel also tries to read parent.width to
+        // compute where "off the right edge" even is. Every open after
+        // the first is fine because by then the window has already been
+        // mapped once for real.
+        //
+        // Rather than guess how long that race takes (a Qt.callLater()
+        // is not a guaranteed-long-enough wait -- Wayland's configure
+        // round-trip is compositor timing, not local event-loop timing),
+        // this waits for the real value: openAnim only ever runs once
+        // parent.width has actually reached a sane size. If parent.width
+        // was already valid immediately (i.e. this theory turns out
+        // wrong), the fast path fires with zero behavior change -- the
+        // fallback below never engages.
+        function beginOpen() {
+            if (parent.width >= width) {
+                openAnim.restart()
+            } else {
+                pendingOpen.enabled = true
+            }
+        }
+
+        Connections {
+            id: pendingOpen
+            target: panel.parent
+            enabled: false
+            function onWidthChanged() {
+                // root.openFlag re-checked here, not just at the top of
+                // beginOpen() -- the panel could have been closed again
+                // in the gap while this was still waiting on a real
+                // width, and firing an open animation after the fact
+                // would be wrong.
+                if (root.openFlag && panel.parent.width >= panel.width) {
+                    pendingOpen.enabled = false
+                    openAnim.restart()
+                }
+            }
+        }
+
+        // Plain (non-bound) property, not `readonly ... : Theme.foreground`
+        // — flashBorder() below needs to imperatively drive it through
+        // Theme.accent and back. Left sitting at Theme.foreground once
+        // the flash finishes, not a live binding, so a theme swap while
+        // this panel happens to be open and idle would lag until the
+        // next open/close — re-syncs every time it opens, which is the
+        // only point that actually matters in practice.
+        property color borderColor: Theme.foreground
+
+        // Fired once the settle above lands (opening only) — a brief
+        // pulse toward Theme.accent and back, so arriving reads as
+        // something actuating/locking into place rather than an object
+        // silently coming to rest. Onset is an instant snap (not eased
+        // in), only the decay is animated — Theme.accent (#88c0d0) and
+        // Theme.foreground (#d8dee9) are both fairly pale colors in this
+        // theme, and easing into the peak on a 1px stroke diluted it
+        // below the point of being noticeable at all. A hard cut into
+        // the flash and a soft fade out of it reads as an actuation, not
+        // a wobble either direction.
+        function flashBorder() {
+            flashFade.stop()
+            borderColor = Theme.accent
+            flashFade.restart()
+        }
+
+        ColorAnimation {
+            id: flashFade
+            target: panel; property: "borderColor"
+            to: Theme.foreground
+            duration: Metrics.settleDuration * 3
+            easing.type: Easing.Linear
+        }
 
         SeamPanelShape {
             anchors.fill: parent
             fillColor: Theme.background
-            strokeColor: Theme.foreground
+            strokeColor: panel.borderColor
         }
 
         // Swallow clicks on the panel itself so they don't fall through
