@@ -72,7 +72,7 @@ let
 					;;
 				done)
 					uuid="''${2:?usage: syland-todo done <uuid>}"
-					task rc.confirmation=off "$uuid" done
+					task rc.confirmation=off "$uuid" "done"
 					;;
 				sync)
 					task sync
