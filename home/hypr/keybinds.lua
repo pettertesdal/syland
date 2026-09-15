@@ -19,7 +19,9 @@ hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("qs ipc call syland-menu toggle")
 hl.bind(mainMod .. " + SHIFT + SPACE", hl.dsp.exec_cmd("qs ipc call syland-menu keybinds"), { description = "Search keybinds" })
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("syland-context open project"), { description = "Open current project's dev terminal" })
 hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("syland-context open pdf"), { description = "Open context PDF" })
-hl.bind(mainMod .. " + ALT + P", hl.dsp.exec_cmd("syland-context open notes"), { description = "Open context notes" })
+-- ALT + P freed up: syland-context's "notes" subcommand (per-project
+-- TODO.md) is retired now that the Taskwarrior panel (SUPER + ALT + T)
+-- is the one TODO system.
 hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("syland-context open docs"), { description = "Open context docs (markdown/README)" })
 hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("qs ipc call notification-center toggle"), { description = "Toggle notification center" })
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("qs ipc call bluetooth-panel toggle"), { description = "Toggle bluetooth panel" })

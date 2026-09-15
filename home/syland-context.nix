@@ -4,9 +4,14 @@
 # and `set <path>` -- nothing implementing either existed until now, same
 # situation syland-theme-apply was in before it got built).
 #
-# Reads the real ~/projects/<category>/<name>/{documents/,repos/<repo>/}
-# convention already in use (e.g. ~/projects/work/SeaR). "documents/" holds
-# PDFs/docs, "repos/" holds one or more actual git checkouts.
+# Reads the real ~/projects/<category>/<name>/{documents/,repo} convention
+# already in use (e.g. ~/projects/work/SeaR/repo, one repo per project --
+# not repos/<name>/ for multiple). "documents/" holds PDFs/docs. "repo" is
+# sometimes itself a symlink (e.g. ~/projects/personal/syland/repo ->
+# ~/.syland) rather than a real checkout, which is why `list`/`set` below
+# use `find -L` -- without following symlinks, `-type d` would never match
+# a symlinked repo since find classifies the link itself (type l) rather
+# than what it points at.
 { pkgs, ... }:
 let
 	sylandContext = pkgs.writeShellApplication {
@@ -107,21 +112,24 @@ let
 			cmd="''${1:-}"
 			case "$cmd" in
 				list)
-					# One line per actual repo (not per project folder) --
-					# matches src/popups/Picker.qml's contextListProc,
-					# which expects {label, path} per line.
-					find "$PROJECTS_DIR" -mindepth 4 -maxdepth 4 -type d -path '*/repos/*' 2>/dev/null \
+					# One line per project's repo dir -- matches
+					# src/popups/Picker.qml's contextListProc, which
+					# expects {label, path} per line. -L: a project's
+					# "repo" is sometimes a symlink (see header comment),
+					# and plain -type d only matches the link itself, not
+					# what it resolves to, without it.
+					find -L "$PROJECTS_DIR" -mindepth 3 -maxdepth 3 -type d -name repo 2>/dev/null \
 						| sort \
 						| while read -r repo_path; do
 							rel="''${repo_path#"$PROJECTS_DIR"/}"
-							label="''${rel//\/repos\//\/}"
+							label="''${rel%/repo}"
 							jq -nc --arg label "$label" --arg path "$repo_path" '{label:$label, path:$path}'
 						done
 					;;
 				set)
 					repo_path="''${2:?usage: syland-context set <repo_path>}"
-					# Walks back up from <PROJECTS_DIR>/<category>/<name>/repos/<repo>.
-					project_root=$(dirname "$(dirname "$repo_path")")
+					# Walks back up from <PROJECTS_DIR>/<category>/<name>/repo.
+					project_root=$(dirname "$repo_path")
 					rel="''${project_root#"$PROJECTS_DIR"/}"
 					category="''${rel%%/*}"
 					name="''${rel#*/}"
@@ -131,6 +139,18 @@ let
 						--arg project_root "$project_root" --arg repo_path "$repo_path" \
 						'{category:$category, name:$name, project_root:$project_root, repo_path:$repo_path}' > "$tmp"
 					mv "$tmp" "$STATE_FILE"
+
+					# Keep ~/projects/current-project (a real symlink some
+					# shell workflows already reach for directly) pointed
+					# at the same project as state.json, not just a second
+					# disconnected notion of "current". Relative target
+					# (not absolute), matching how it was already set up
+					# by hand. -sfn, not just -sf: current-project already
+					# exists as a symlink-to-directory, and plain `ln -s`
+					# against an existing symlink-to-dir places the new
+					# link *inside* that directory instead of replacing
+					# it -- `-n` is what makes it overwrite in place.
+					ln -sfn "$rel" "$PROJECTS_DIR/current-project"
 
 					ensure_devterm "$repo_path"
 					;;
@@ -150,12 +170,6 @@ let
 							zathura "$file" >/dev/null 2>&1 &
 							disown
 							;;
-						notes)
-							todo="$project_root/TODO.md"
-							[ -f "$todo" ] || printf '# %s TODO\n\n- [ ] \n' "$(basename "$project_root")" > "$todo"
-							ghostty -e nvim "$todo" >/dev/null 2>&1 &
-							disown
-							;;
 						docs)
 							mapfile -t docs < <({
 								find "$project_root/documents" -maxdepth 1 \( -iname '*.md' -o -iname '*.markdown' -o -iname 'README*' \) 2>/dev/null
@@ -173,7 +187,7 @@ let
 							ensure_devterm "$repo_path"
 							;;
 						*)
-							echo "usage: syland-context open {pdf|notes|docs|project}" >&2
+							echo "usage: syland-context open {pdf|docs|project}" >&2
 							exit 1
 							;;
 					esac
@@ -186,7 +200,7 @@ let
 					fi
 					;;
 				*)
-					echo "usage: syland-context {list|set <repo_path>|open {pdf|notes|docs|project}|current}" >&2
+					echo "usage: syland-context {list|set <repo_path>|open {pdf|docs|project}|current}" >&2
 					exit 1
 					;;
 			esac
