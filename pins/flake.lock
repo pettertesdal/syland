@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1789149629,
+        "narHash": "sha256-H6GwaZzZf+4npqv0tph94w9tZddSjFjmQrVsW0z78uk=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "eaad089433ca2bb662274377d33df3d0e51ef28b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "nixpkgs-nix-search-tv": {
       "locked": {
         "lastModified": 1787015157,
@@ -18,7 +34,26 @@
     },
     "root": {
       "inputs": {
-        "nixpkgs-nix-search-tv": "nixpkgs-nix-search-tv"
+        "nixpkgs-nix-search-tv": "nixpkgs-nix-search-tv",
+        "zen-browser": "zen-browser"
+      }
+    },
+    "zen-browser": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1789289402,
+        "narHash": "sha256-7HHAIxdoDAJv09/I6DrMsAJFgol2cqJumaPCCZ+XdAU=",
+        "owner": "youwen5",
+        "repo": "zen-browser-flake",
+        "rev": "4036109214cf20632000558935bd823b901fa886",
+        "type": "github"
+      },
+      "original": {
+        "owner": "youwen5",
+        "repo": "zen-browser-flake",
+        "type": "github"
       }
     }
   },

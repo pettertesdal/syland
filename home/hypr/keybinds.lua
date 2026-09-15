@@ -33,6 +33,12 @@ for i = 1, 10 do
     hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = key}), { description = "Move to workspace " .. i })
 end
 
+-- monitors — resolved by physical position (l/r/u/d), not connector name,
+-- so this stays correct even when the dock's MST enumeration reorders
+-- DP-6/DP-7 between reconnects.
+hl.bind(mainMod .. " + SHIFT + RIGHT", hl.dsp.workspace.move({ monitor = "r" }), { description = "Move workspace to display on the right" })
+hl.bind(mainMod .. " + SHIFT + LEFT", hl.dsp.workspace.move({ monitor = "l" }), { description = "Move workspace to display on the left" })
+
 -- system
 -- Example volume button that allows press and hold, volume limited to 150%
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+"), { repeating = true })

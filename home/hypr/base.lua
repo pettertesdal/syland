@@ -48,6 +48,15 @@ hl.config({
 -- (e.g. "eDP-1") and use that instead of a wildcard once you know it —
 -- explicit is safer than guessing at wildcard syntax.
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
+-- Matched by desc, not connector name -- DP-6/DP-7 are MST-assigned and
+-- swap which physical monitor they refer to between reconnects.
+-- Both externals capped (test): Hyprland's own log showed "failed to
+-- commit: No space left on device" on the atomic DRM request -- real
+-- MST link bandwidth exhaustion, not a mode/firmware issue. Capping
+-- just the Odyssey wasn't enough on its own; cutting the ultrawide's
+-- mode too to see if the combined budget then fits.
+hl.monitor({ output = "desc:Samsung Electric Company LC27G7xT", mode = "2560x1440@60", position = "auto", scale = 1 })
+hl.monitor({ output = "desc:Samsung Electric Company LC34G55T", mode = "preferred", position = "auto", scale = 1 })
 
 hl.on("hyprland.start", function()
     -- Started here rather than via home-manager's services.awww systemd

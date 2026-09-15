@@ -16,5 +16,6 @@
     cliamp
     devenv
     zathura
+    zen-browser
   ];
 }
