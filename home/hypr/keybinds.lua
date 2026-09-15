@@ -25,6 +25,7 @@ hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("qs ipc call notification-center togg
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("qs ipc call bluetooth-panel toggle"), { description = "Toggle bluetooth panel" })
 hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("qs ipc call theme-switcher toggle"), { description = "Toggle theme switcher panel" })
 hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("syland-theme-apply toggle"), { description = "Toggle variation switch" })
+hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd("qs ipc call todo-panel toggle"), { description = "Toggle TODO panel" })
 
 -- workspaces — VERIFY: exact workspace-switch/move dispatcher names
 for i = 1, 10 do

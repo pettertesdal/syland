@@ -19,3 +19,4 @@ singleton ClockService services/ClockService.qml
 singleton NotificationService services/NotificationService.qml
 singleton NetworkStatusService services/NetworkStatusService.qml
 singleton BluetoothStatusService services/BluetoothStatusService.qml
+singleton TodoService services/TodoService.qml

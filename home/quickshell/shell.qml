@@ -29,6 +29,7 @@ ShellRoot {
                 NotificationCenter { screen: modelData }
                 NotificationToast { screen: modelData }
                 ThemeSwitcher { screen: modelData }
+                TodoPanel { screen: modelData }
 
                 Picker {
                     targetWindow: centerModule

@@ -17,5 +17,6 @@
     devenv
     zathura
     zen-browser
+    taskwarrior3
   ];
 }

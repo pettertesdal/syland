@@ -76,4 +76,13 @@ QtObject {
             Popups.themeSwitcherOpen = !Popups.themeSwitcherOpen
         }
     }
+
+    // Bound to SUPER+ALT+T in home/hypr/keybinds.lua.
+    property IpcHandler _todoPanelHandler: IpcHandler {
+        target: "todo-panel"
+
+        function toggle(): void {
+            Popups.todoPanelOpen = !Popups.todoPanelOpen
+        }
+    }
 }

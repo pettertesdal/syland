@@ -33,11 +33,15 @@ QtObject {
     // open. Same pattern again.
     property bool themeSwitcherOpen: false
 
+    // Whether popups/TodoPanel.qml is open. Same pattern again.
+    property bool todoPanelOpen: false
+
     function closeAll() {
         menuOpen = false
         examplePanelOpen = false
         notificationCenterOpen = false
         bluetoothPanelOpen = false
         themeSwitcherOpen = false
+        todoPanelOpen = false
     }
 }
