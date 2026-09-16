@@ -26,6 +26,7 @@
     ./home/zellij.nix
     ./home/syland-context.nix
     ./home/syland-todo.nix
+    ./home/obsidian.nix
   ];
 
   home.username = "tesdap";
