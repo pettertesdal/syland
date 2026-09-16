@@ -30,6 +30,7 @@ ShellRoot {
                 NotificationToast { screen: modelData }
                 ThemeSwitcher { screen: modelData }
                 TodoPanel { screen: modelData }
+                BluetoothPanel { screen: modelData }
 
                 Picker {
                     targetWindow: centerModule

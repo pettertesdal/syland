@@ -25,8 +25,9 @@ QtObject {
     // NotificationService.toastQueue is empty.
     property bool notificationCenterOpen: false
 
-    // Whether popups/BluetoothPanel.qml — windows/RightModule.qml
-    // "growing" for advanced bluetooth options — is open.
+    // Whether popups/BluetoothPanel.qml (drops down from above, same
+    // SeamPanelShape pattern as notificationCenterOpen) is open. Used to
+    // be windows/RightModule.qml growing in place instead — retired.
     property bool bluetoothPanelOpen: false
 
     // Whether popups/ThemeSwitcher.qml (sliding theme/wallpaper list) is
