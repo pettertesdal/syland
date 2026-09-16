@@ -11,7 +11,7 @@ import "../shapes"
 // toast-display are two separate lifetimes on the same underlying
 // NotificationServer.
 //
-// Shaped by shapes/SeamPanelShape.qml (shared with popups/BluetoothPanel.qml):
+// Shaped by shapes/SeamPanelShape.qml:
 // a fixed-width column (not the whole screen), flush against the screen's
 // true right edge and true bottom edge, with a notch cut into the
 // top-right area that shares its diagonal exactly with
@@ -126,6 +126,29 @@ AnimatedPopup {
             anchors.fill: parent
             fillColor: Theme.background
             strokeColor: panel.borderColor
+        }
+
+        // Unread-notification indicator — a small tab protruding from
+        // this panel's own left edge, not a simple dot bolted onto
+        // RightModule (a first attempt at this, corrected after seeing
+        // a dedicated shape reference). Positioned at Metrics.moduleHeight,
+        // the same reference height SeamPanelShape's own top-right notch
+        // already uses for its seam with RightModule — this is the same
+        // seam, echoed on the opposite (left) side, meant to interlock
+        // with a matching notch cut into popups/BluetoothPanel.qml's own
+        // right edge, which sits to this panel's left. Plain on/off, not
+        // urgency-colored, matching the mockup's simple tab.
+        //
+        // VERIFY: exact height/size reconstructed from a hand-drawn
+        // reference image, not measured — confirm it actually lines up
+        // with BluetoothPanel's own notch once both are visible live.
+        Rectangle {
+            x: -width
+            y: Metrics.moduleHeight - height
+            width: 8
+            height: 12
+            color: Theme.accent
+            visible: NotificationService.server.trackedNotifications.count > 0
         }
 
         // Swallow clicks on the panel itself so they don't fall through

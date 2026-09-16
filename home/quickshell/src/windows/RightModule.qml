@@ -26,19 +26,4 @@ HangingModule {
         DiagonalDivider {}
         BatteryIndicator {}
     }
-
-    // Unread-notification indicator, sitting at this module's own
-    // bottom-right corner — the same corner popups/NotificationCenter.qml's
-    // own top-right notch is deliberately aligned to share a diagonal
-    // with (see that file's header comment), so this reads as "attached
-    // to" the seam between the two rather than floating arbitrarily.
-    // Plain on/off, not urgency-colored: matches the mockup's simple dot.
-    Rectangle {
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        width: 6
-        height: 6
-        color: Theme.accent
-        visible: NotificationService.server.trackedNotifications.count > 0
-    }
 }

@@ -1,10 +1,12 @@
 import QtQuick
 import "../"
 
-// A "growing" panel's outline — originally built for popups/NotificationCenter.qml,
-// now shared with popups/BluetoothPanel.qml too, since the shape itself has
-// nothing notification-specific about it: it's just any panel that reads as
-// windows/RightModule.qml expanding downward. The panel doesn't sit flush
+// A "growing" panel's outline — built for popups/NotificationCenter.qml.
+// popups/BluetoothPanel.qml used to share this too, but needed its own
+// bespoke shapes/BluetoothPanelShape.qml instead once its narrow-top
+// section (echoing RightModule's own resting silhouette exactly) plus
+// full-width body needed geometry this shape doesn't have any concept
+// of. The panel doesn't sit flush
 // against any true screen edge except the middle stretch of its right side
 // (both its width and its gap above the screen's true bottom edge keep
 // every other edge floating), so every corner gets the same

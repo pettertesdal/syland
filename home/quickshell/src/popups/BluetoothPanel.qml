@@ -4,15 +4,17 @@ import "../"
 import "../components"
 import "../shapes"
 
-// Bluetooth panel — replaces windows/RightModule.qml's old "grow in place"
-// mechanic with a real popup, same SeamPanelShape/settle-motion/flash
-// pattern as popups/NotificationCenter.qml (which this is a structural
-// twin of: same width, same right-flush x, same top-right notch sharing
-// RightModule's corner diagonal) — except the open/close motion animates
-// y instead of x. Closed sits fully above the screen (y: -height);
-// open drops down to rest at y: 0, landing right where RightModule's own
-// bottom-right corner (and the notification light next to it) already
-// is, rather than sliding in from the side.
+// Bluetooth panel — replaces windows/RightModule.qml's old "grow in
+// place" mechanic with a real popup. Shaped by shapes/BluetoothPanelShape.qml:
+// a narrow top section that exactly coincides with RightModule's own
+// resting silhouette (same width, same right-edge inset), widening below
+// Metrics.moduleHeight into the full panel body — see that shape's own
+// header comment for the full geometry reasoning. Because the narrow top
+// is meant to be motionless (it's just echoing RightModule, which never
+// moves), what animates on open/close is *height*, not position: closed,
+// height sits at Metrics.moduleHeight and the shape degenerates to
+// exactly RightModule's own rectangle (nothing new drawn); open, it
+// grows down to reveal the wide body. x/y/width stay constant throughout.
 //
 // Content is a straight port of RightModule's old "grown" Bluetooth
 // section (adapter toggle, scan, device list) — no new backend, wifi/
@@ -26,6 +28,14 @@ AnimatedPopup {
     onCloseRequested: Popups.bluetoothPanelOpen = false
 
     readonly property int panelWidth: 380
+
+    // The RightModule instance this panel's narrow top section has to
+    // exactly coincide with — passed in from shell.qml, since that's a
+    // sibling window, not something reachable any other way. Falls back
+    // to a reasonable default so this doesn't error before shell.qml is
+    // updated to actually pass it.
+    property var rightModule: null
+    readonly property int topWidth: rightModule ? rightModule.boxWidth : 150
 
     Connections {
         target: root
@@ -44,27 +54,25 @@ AnimatedPopup {
     Item {
         id: panel
         width: root.panelWidth
-        // Same "leave a gap matching the panel's own width" reasoning as
-        // NotificationCenter, just at the top instead of the bottom.
-        height: parent.height - root.panelWidth
         x: parent.width - width
+        y: 0
 
-        readonly property int restY: 0
-        readonly property int hiddenY: -height
-        y: hiddenY
+        readonly property int restHeight: parent.height - root.panelWidth
+        readonly property int hiddenHeight: Metrics.moduleHeight
+        height: hiddenHeight
 
         SequentialAnimation {
             id: openAnim
             onFinished: panel.flashBorder()
             NumberAnimation {
-                target: panel; property: "y"
-                to: panel.restY + Metrics.settleOvershoot
+                target: panel; property: "height"
+                to: panel.restHeight + Metrics.settleOvershoot
                 duration: Metrics.animDuration
                 easing.type: Easing.Linear
             }
             NumberAnimation {
-                target: panel; property: "y"
-                to: panel.restY
+                target: panel; property: "height"
+                to: panel.restHeight
                 duration: Metrics.settleDuration
                 easing.type: Easing.Linear
             }
@@ -72,18 +80,17 @@ AnimatedPopup {
 
         NumberAnimation {
             id: closeAnim
-            target: panel; property: "y"
-            to: panel.hiddenY
+            target: panel; property: "height"
+            to: panel.hiddenHeight
             duration: Metrics.animDuration
             easing.type: Easing.Linear
         }
 
         // Same first-open geometry-race guard as TodoPanel/NotificationCenter
-        // (see their comments for the full reasoning) — parent.height, not
-        // parent.width, since this panel's hidden position depends on its
-        // own height, not the screen's width.
+        // (see their comments for the full reasoning) — parent.height,
+        // since restHeight depends on it.
         function beginOpen() {
-            if (parent.height >= height) {
+            if (parent.height >= root.panelWidth + Metrics.moduleHeight) {
                 openAnim.restart()
             } else {
                 pendingOpen.enabled = true
@@ -95,7 +102,7 @@ AnimatedPopup {
             target: panel.parent
             enabled: false
             function onHeightChanged() {
-                if (root.openFlag && panel.parent.height >= panel.height) {
+                if (root.openFlag && panel.parent.height >= root.panelWidth + Metrics.moduleHeight) {
                     pendingOpen.enabled = false
                     openAnim.restart()
                 }
@@ -118,10 +125,14 @@ AnimatedPopup {
             easing.type: Easing.Linear
         }
 
-        SeamPanelShape {
+        BluetoothPanelShape {
             anchors.fill: parent
             fillColor: Theme.background
             strokeColor: panel.borderColor
+            chamfer: Metrics.chamferSize
+            topWidth: root.topWidth
+            topInset: Metrics.moduleMargin
+            topHeight: Metrics.moduleHeight
         }
 
         // Swallow clicks on the panel itself so they don't fall through
@@ -136,6 +147,7 @@ AnimatedPopup {
             anchors.right: parent.right
             anchors.margins: Metrics.spacingMd
             spacing: Metrics.spacingSm
+            visible: panel.height > Metrics.moduleHeight + Metrics.spacingMd
 
             Item {
                 width: parent.width
@@ -199,7 +211,7 @@ AnimatedPopup {
             anchors.margins: Metrics.spacingMd
             clip: true
             spacing: Metrics.spacingXs
-            visible: BluetoothStatusService.enabled
+            visible: BluetoothStatusService.enabled && header.visible
             model: Bluetooth.devices
 
             delegate: BluetoothDeviceRow {
@@ -211,7 +223,7 @@ AnimatedPopup {
 
         Text {
             anchors.centerIn: parent
-            visible: !BluetoothStatusService.enabled
+            visible: !BluetoothStatusService.enabled && header.visible
             text: "Bluetooth is off"
             color: Theme.foreground
             opacity: 0.6

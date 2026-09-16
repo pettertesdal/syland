@@ -19,7 +19,10 @@ ShellRoot {
                     id: centerModule
                     screen: modelData
                 }
-                RightModule { screen: modelData }
+                RightModule {
+                    id: rightModule
+                    screen: modelData
+                }
 
                 Border { screen: modelData; edge: "left" }
                 Border { screen: modelData; edge: "right" }
@@ -30,7 +33,7 @@ ShellRoot {
                 NotificationToast { screen: modelData }
                 ThemeSwitcher { screen: modelData }
                 TodoPanel { screen: modelData }
-                BluetoothPanel { screen: modelData }
+                BluetoothPanel { screen: modelData; rightModule: rightModule }
 
                 Picker {
                     targetWindow: centerModule
