@@ -59,6 +59,14 @@ hl.monitor({ output = "desc:Samsung Electric Company LC27G7xT", mode = "2560x144
 hl.monitor({ output = "desc:Samsung Electric Company LC34G55T", mode = "preferred", position = "auto", scale = 1 })
 
 hl.on("hyprland.start", function()
+    -- config/autologin.nix's own reason for existing. tesdap's own
+    -- session now starts unauthenticated (autologin, no greeter/PAM
+    -- gate), so the lock has to be the very first thing to engage,
+    -- ahead of awww/qs/mako below, to keep the window where the
+    -- compositor is up but unlocked as close to zero as possible.
+    -- `systemctl --user start` on an already-active unit is a no-op, so
+    -- this is always safe to call unconditionally.
+    hl.exec_cmd("systemctl --user start syland-lock.service")
     -- Started here rather than via home-manager's services.awww systemd
     -- unit -- see home/wallpaper.nix for why that never actually fires
     -- on this system. Before qs/quickshell so the daemon is already up
@@ -73,4 +81,20 @@ hl.on("hyprland.start", function()
     -- already-running unit is a no-op, so this is safe to run every
     -- Hyprland start regardless of whether it's already up.
     hl.exec_cmd("systemctl --user start hypridle.service")
+    -- Absolute last thing, not first -- config/boot.nix's own Plymouth
+    -- boot splash should stay up until the lock screen (started above)
+    -- has actually had a moment to paint, not just been told to start.
+    -- Quitting Plymouth immediately on this hook firing (tried first)
+    -- was too early: this hook fires once Hyprland's own config is
+    -- being evaluated, not once quickshell's lock surface has actually
+    -- rendered a frame, so Plymouth was handing off to a brief flash of
+    -- Hyprland's own startup console text before the lock painted over
+    -- it -- confirmed live. The sleep is a deliberate buffer for that,
+    -- not just cosmetic delay: `systemctl --user start` above returns
+    -- once the unit is starting, not once it's actually drawing.
+    -- Safe to call even if Plymouth already quit via its own
+    -- plymouth-quit-wait.service (WantedBy multi-user.target) --
+    -- quitting an already-quit instance is a no-op, so this is a
+    -- guarantee on top of that, not a conflicting second mechanism.
+    hl.exec_cmd("sleep 0.5 && plymouth quit")
 end)
