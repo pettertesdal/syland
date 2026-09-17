@@ -1,0 +1,25 @@
+# Deployed to ~/.config/cava/config by home/dotfiles.nix. Drives
+# services/CavaService.qml's own bar-parsing — barCount there (12) has to
+# match `bars` below, and the ascii/raw format settings have to match
+# exactly what CavaService.qml expects to parse (verified against cava
+# 0.10.7's own generated default config before writing this, rather than
+# guessed): one line per frame, `barCount` values 0-100, separated by
+# `;` (decimal 59), each frame terminated by `\n` (decimal 10).
+
+[general]
+bars = 12
+framerate = 60
+sensitivity = 100
+autosens = 1
+
+[input]
+method = pipewire
+source = auto
+
+[output]
+method = raw
+raw_target = /dev/stdout
+data_format = ascii
+ascii_max_range = 100
+bar_delimiter = 59
+frame_delimiter = 10

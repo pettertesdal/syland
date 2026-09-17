@@ -21,6 +21,18 @@ import "../"
 // Built from the same Metrics.moduleHeight/moduleMargin/chamferSize
 // constants RightModule uses, so the top-right diagonal lands on the
 // identical line rather than merely a close one, for any consumer.
+//
+// The notification-state light used to be baked into this same path (a
+// notch protruding from the left edge) so it could stay visible even
+// while popups/NotificationCenter.qml was otherwise "closed" — that
+// required keeping the whole popup permanently mapped, which broke
+// reliable keyboard focus for its own content (a persistently-mapped
+// window never gets the "just got mapped" transition the compositor
+// needs to hand over keyboard interactivity, unlike every other popup in
+// this shell). The light now lives in its own always-visible, zero-
+// interaction window instead — windows/NotificationLight.qml, geometry
+// ported from this shape's own former notch math — and this shape is
+// back to exactly what it was before that detour.
 Canvas {
     id: root
 

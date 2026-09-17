@@ -37,6 +37,21 @@ QtObject {
     // on the exact same line rather than merely a visually-close one.
     readonly property int moduleMargin: moduleHeight - chamferSize
 
+    // windows/MusicModule.qml's own box height (shorter than
+    // moduleHeight — its shape has no chamfer to clear, but was tuned
+    // shorter anyway). popups/Picker.qml's outerEdgeDrop and
+    // windows/CenterModule.qml's own travel distance both key off this
+    // same number now too, so all three stay in lockstep rather than
+    // three independently-hardcoded copies drifting apart.
+    property int moduleContentHeight: moduleHeight - 10
+
+    // Gap on either side of windows/CenterModule.qml's own box that
+    // windows/MusicModule.qml (both instances) and popups/Picker.qml all
+    // key off of — Picker's own width is derived from this so it fits
+    // snugly in the same gap the two music modules already leave, rather
+    // than three independently-hardcoded numbers drifting apart.
+    property int centerGap: 200
+
     // Shared duration for every Behavior/NumberAnimation in the shell —
     // missing this property doesn't fail loudly: `Metrics.animDuration`
     // silently evaluates to `undefined` wherever it's referenced,

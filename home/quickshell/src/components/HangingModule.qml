@@ -48,22 +48,53 @@ PanelWindow {
     // box's own current bounds, so a permanently-tall transparent window
     // doesn't swallow clicks meant for whatever's underneath while this
     // module is small/idle.
-    implicitHeight: grownHeight
+    implicitHeight: grownHeight + maxYShift
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     // Ordinary hanging modules sit on the same layer as Border/TopBar-
-    // equivalents; grown, this needs to draw above normal windows the
-    // same way AnimatedPopup's own popups do.
-    WlrLayershell.layer: grown ? WlrLayer.Overlay : WlrLayer.Top
+    // equivalents; grown, or riding along with an Overlay-layer popup
+    // (maxYShift > 0 — windows/CenterModule.qml/RightModule.qml wire this
+    // once, to a constant, whenever they're configured to track one),
+    // this needs to draw above normal windows the same way
+    // AnimatedPopup's own popups do — otherwise, once yShift actually
+    // carries the box down into the same screen region the popup's own
+    // body occupies, the box renders *underneath* that popup's opaque
+    // fill instead of on top of it. Confirmed live: this is exactly what
+    // "I don't see RightModule once BluetoothPanel is open" was.
+    WlrLayershell.layer: (grown || maxYShift > 0) ? WlrLayer.Overlay : WlrLayer.Top
     mask: Region { item: box }
 
     property string align: "left" // "left" | "center" | "right"
     property int boxWidth: 100
     default property alias content: contentItem.data
 
+    // Exposed so a sibling window can position itself relative to this
+    // module's actual on-screen box — windows/MusicModule.qml uses this
+    // (via a `centerModule` reference, same pattern
+    // popups/BluetoothPanel.qml's own `rightModule` property uses) to
+    // sit flush against windows/CenterModule.qml's clock, since that's a
+    // separate wlr-layer-shell window with its own independent geometry,
+    // not something a plain anchor/alignment on this window alone could
+    // reach.
+    readonly property alias boxX: box.x
+
     property bool grown: false
     property int grownWidth: boxWidth
     property int grownHeight: Metrics.moduleHeight
+
+    // Opt-in vertical offset for box — no-op (0) by default, so
+    // LeftModule/RightModule are unaffected. windows/CenterModule.qml
+    // uses this to ride down with popups/Picker.qml's own opening
+    // animation (that popup exposes an openProgress the same way
+    // popups/NotificationCenter.qml does for
+    // windows/NotificationLight.qml — same "always-visible element
+    // tracks a separate popup's motion" trick). maxYShift has to be
+    // reserved up front in implicitHeight, same reasoning grownHeight
+    // already documents above: box moving outside this window's own
+    // mapped surface bounds would just get clipped by Wayland, not
+    // resized into.
+    property real yShift: 0
+    property int maxYShift: 0
 
     Item {
         id: box
@@ -71,7 +102,7 @@ PanelWindow {
         height: root.grown ? root.grownHeight : Metrics.moduleHeight
         Behavior on width { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
         Behavior on height { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
-        y: 0
+        y: root.yShift
         x: {
             if (root.align === "left") return Metrics.moduleMargin
             if (root.align === "right") return parent.width - width - Metrics.moduleMargin

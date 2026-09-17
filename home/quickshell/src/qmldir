@@ -20,3 +20,7 @@ singleton NotificationService services/NotificationService.qml
 singleton NetworkStatusService services/NetworkStatusService.qml
 singleton BluetoothStatusService services/BluetoothStatusService.qml
 singleton TodoService services/TodoService.qml
+singleton MprisService services/MprisService.qml
+singleton CavaService services/CavaService.qml
+singleton VolumeService services/VolumeService.qml
+singleton SysStatsService services/SysStatsService.qml

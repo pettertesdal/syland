@@ -23,6 +23,8 @@
     ./config/fonts.nix
     ./config/packages.nix
     ./config/nix.nix
+    ./config/gpu-stats.nix
+    ./config/lock.nix
   ];
 
   # This option defines the first version of NixOS you have installed on this particular machine,

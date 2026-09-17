@@ -14,6 +14,7 @@
     libnotify
     kew
     cliamp
+    cava
     devenv
     zathura
     zen-browser

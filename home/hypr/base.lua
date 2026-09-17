@@ -66,4 +66,11 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("awww-daemon")
     hl.exec_cmd("qs")
     hl.exec_cmd("mako")
+    -- hypridle.service exists (home/hypridle.nix generates its config
+    -- and unit file) but isn't auto-started -- same
+    -- graphical-session.target-never-activates issue as awww above, see
+    -- home/hypridle.nix's own comment. `systemctl --user start` on an
+    -- already-running unit is a no-op, so this is safe to run every
+    -- Hyprland start regardless of whether it's already up.
+    hl.exec_cmd("systemctl --user start hypridle.service")
 end)

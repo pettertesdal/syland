@@ -22,6 +22,16 @@ QtObject {
 
     readonly property int toastDuration: 5000
 
+    // How many notifications existed the last time
+    // popups/NotificationCenter.qml was closed — i.e. how many you've
+    // actually seen. Lives here, not on the popup itself, so
+    // windows/NotificationLight.qml (a separate, always-visible window
+    // with no notion of the popup's own internal state) can read it too
+    // for its own unread/clear indicator. Starts at 0, so anything
+    // present before the panel's ever been opened correctly counts as
+    // unseen.
+    property int seenCount: 0
+
     // Array of { notification, shownAt } — reassigned wholesale (concat/
     // filter, never push/splice) since QML only notifies bindings on
     // whole-property assignment for `property var`, not in-place mutation.

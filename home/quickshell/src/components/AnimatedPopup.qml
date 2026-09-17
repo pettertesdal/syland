@@ -39,8 +39,9 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
 
+    property bool keepVisible: false
     property bool windowVisible: false
-    visible: windowVisible
+    visible: windowVisible || keepVisible
 
     onOpenFlagChanged: {
         if (openFlag) {

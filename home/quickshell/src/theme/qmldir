@@ -5,6 +5,13 @@
 # Theme.qml can't see ColorLoader.qml as a type ("ColorLoader is not a
 # type"). Registering both files here, even though Theme is already also
 # registered in ../qmldir for outside consumers, fixes that.
+#
+# Metrics registered here too now, even though nothing in ../ needed it
+# (every file there reaches Metrics via `import "../"` instead) — added
+# so this whole theme/ directory is self-contained and importable on its
+# own, which home/quickshell-lock/ now relies on (deployed as its own
+# standalone copy, without the rest of src/ alongside it).
 
 singleton Theme Theme.qml
+singleton Metrics Metrics.qml
 ColorLoader ColorLoader.qml
