@@ -59,7 +59,7 @@ hl.monitor({ output = "desc:Samsung Electric Company LC27G7xT", mode = "2560x144
 hl.monitor({ output = "desc:Samsung Electric Company LC34G55T", mode = "preferred", position = "auto", scale = 1 })
 
 hl.on("hyprland.start", function()
-    -- config/autologin.nix's own reason for existing. tesdap's own
+    -- config/hyprland-session.nix's own reason for existing. tesdap's own
     -- session now starts unauthenticated (autologin, no greeter/PAM
     -- gate), so the lock has to be the very first thing to engage,
     -- ahead of awww/qs/mako below, to keep the window where the
@@ -67,12 +67,36 @@ hl.on("hyprland.start", function()
     -- `systemctl --user start` on an already-active unit is a no-op, so
     -- this is always safe to call unconditionally.
     hl.exec_cmd("systemctl --user start syland-lock.service")
+    -- The actual Plymouth splash teardown -- deliberately issued here,
+    -- not any earlier: config/hyprland-session.nix's own ExecStartPre
+    -- only `plymouth deactivate`s (stops the splash repainting, doesn't
+    -- release the display) right as Hyprland starts, and is `Before=`
+    -- the real plymouth-quit(-wait).service units so those can't race
+    -- ahead of Hyprland even existing -- but neither of those control
+    -- the fine-grained timing of *this* moment, right after the lock
+    -- surface is confirmed up, which is what actually keeps the splash
+    -- up until there's nothing unlocked left to see under it. --wait,
+    -- not bare "quit" -- confirmed live (journalctl -b -1 +
+    -- systemd-coredump) that bare "plymouth quit" is non-blocking and
+    -- can race whatever runs right after it for the display.
+    hl.exec_cmd("plymouth quit --wait")
     -- Started here rather than via home-manager's services.awww systemd
     -- unit -- see home/wallpaper.nix for why that never actually fires
     -- on this system. Before qs/quickshell so the daemon is already up
     -- if anything ends up calling `awww img` early.
     hl.exec_cmd("awww-daemon")
-    hl.exec_cmd("qs")
+    -- Redirected to a persistent (~/.cache, not tmpfs) log file, appended
+    -- across restarts -- the main shell isn't systemd-managed (unlike
+    -- syland-lock.service, whose own stdout/stderr already lands in
+    -- journalctl for free), so its own console.log output previously had
+    -- nowhere durable to go at all. Confirmed live this is a real gap,
+    -- not a hypothetical one: diagnosing a stuck-lock-overlay bug needed
+    -- exactly this output, and by the time recovery required a reboot,
+    -- it was gone for good (only living in /run/user, tmpfs). A leading
+    -- timestamp marker per start, not per line -- good enough to
+    -- correlate against journalctl's own timestamped syland-lock.service
+    -- output by sequence, without needing a per-line `ts`-style wrapper.
+    hl.exec_cmd("bash -c 'echo \"--- $(date -Is) ---\" >> ~/.cache/qs.log; exec qs >> ~/.cache/qs.log 2>&1'")
     hl.exec_cmd("mako")
     -- hypridle.service exists (home/hypridle.nix generates its config
     -- and unit file) but isn't auto-started -- same
@@ -81,20 +105,4 @@ hl.on("hyprland.start", function()
     -- already-running unit is a no-op, so this is safe to run every
     -- Hyprland start regardless of whether it's already up.
     hl.exec_cmd("systemctl --user start hypridle.service")
-    -- Absolute last thing, not first -- config/boot.nix's own Plymouth
-    -- boot splash should stay up until the lock screen (started above)
-    -- has actually had a moment to paint, not just been told to start.
-    -- Quitting Plymouth immediately on this hook firing (tried first)
-    -- was too early: this hook fires once Hyprland's own config is
-    -- being evaluated, not once quickshell's lock surface has actually
-    -- rendered a frame, so Plymouth was handing off to a brief flash of
-    -- Hyprland's own startup console text before the lock painted over
-    -- it -- confirmed live. The sleep is a deliberate buffer for that,
-    -- not just cosmetic delay: `systemctl --user start` above returns
-    -- once the unit is starting, not once it's actually drawing.
-    -- Safe to call even if Plymouth already quit via its own
-    -- plymouth-quit-wait.service (WantedBy multi-user.target) --
-    -- quitting an already-quit instance is a no-op, so this is a
-    -- guarantee on top of that, not a conflicting second mechanism.
-    hl.exec_cmd("sleep 0.5 && plymouth quit")
 end)

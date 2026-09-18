@@ -85,4 +85,42 @@ QtObject {
             Popups.todoPanelOpen = !Popups.todoPanelOpen
         }
     }
+
+    // Called by home/quickshell-lock/LockContext.qml's own Process, not
+    // a Hyprland keybind — see windows/LockRetreatOverlay.qml's own
+    // comment for what this actually does. trigger(), not toggle() or
+    // show(): the overlay always turns itself back off once its own
+    // retreat animation finishes, so there's never a case where this
+    // needs to turn it off from the caller's side — and "show" turned
+    // out to collide with `qs ipc show`'s own subcommand name, confirmed
+    // live (`qs ipc call lock-retreat show` silently printed the same
+    // target/function listing `qs ipc show` itself prints, rather than
+    // actually invoking anything — the CLI parser routes the literal
+    // string "show" to that subcommand instead of treating it as this
+    // function's name).
+    property IpcHandler _lockRetreatHandler: IpcHandler {
+        target: "lock-retreat"
+
+        function trigger(): void {
+            Popups.lockRetreatOpen = true
+        }
+    }
+
+    // Called by home/syland-lock-trigger.nix's own script — see
+    // windows/LockAssemblyOverlay.qml's own comment for what trigger()
+    // does. ready(), a second function on the same target rather than a
+    // separate IpcHandler, is called by
+    // home/quickshell-lock/LockSurface.qml's own readyTrigger instead,
+    // once the real lock surface actually exists.
+    property IpcHandler _lockAssemblyHandler: IpcHandler {
+        target: "lock-assembly"
+
+        function trigger(): void {
+            Popups.lockAssemblyOpen = true
+        }
+
+        function ready(): void {
+            Popups.lockRealReady = true
+        }
+    }
 }

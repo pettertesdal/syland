@@ -29,11 +29,11 @@ hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("qs ipc call theme-switcher toggle"),
 hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("syland-theme-apply toggle"), { description = "Toggle variation switch" })
 hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd("qs ipc call todo-panel toggle"), { description = "Toggle TODO panel" })
 -- Not SUPER + L / SUPER + SHIFT + L -- both already taken by the
--- vim-style hjkl focus/move block below. "safe to run every Hyprland
--- start" no-op reasoning from base.lua's own hl.on hook applies here
--- too -- starting an already-active syland-lock.service is a no-op, not
--- a second lock instance.
-hl.bind(mainMod .. " + ALT + L", hl.dsp.exec_cmd("systemctl --user start syland-lock.service"), { description = "Lock screen" })
+-- vim-style hjkl focus/move block below. Plays the lock entrance
+-- animation on the main shell (windows/LockAssemblyOverlay.qml) --
+-- that overlay's own onFinished is what actually starts
+-- syland-lock.service, once the animation itself finishes.
+hl.bind(mainMod .. " + ALT + L", hl.dsp.exec_cmd("qs ipc call lock-assembly trigger"), { description = "Lock screen" })
 
 -- workspaces — VERIFY: exact workspace-switch/move dispatcher names
 for i = 1, 10 do

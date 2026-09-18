@@ -13,18 +13,6 @@
 			history.size = 10000;
 			history.ignoreAllDups = true;
 			history.path = "$HOME/.zsh_history";
-			# config/autologin.nix's own counterpart -- autologin alone only
-			# gets you to a shell prompt on tty1; this is what actually
-			# starts the graphical session from there. profileExtra (not
-			# .zshrc) since this should run once per *login*, not once per
-			# new shell/tab. Guarded on both tty1 and no existing
-			# WAYLAND_DISPLAY so opening a terminal *inside* an already-
-			# running session never tries to exec a second compositor.
-			profileExtra = ''
-				if [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-					exec start-hyprland
-				fi
-			'';
 		};
 
 		starship = {

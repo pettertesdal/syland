@@ -37,6 +37,32 @@ QtObject {
     // Whether popups/TodoPanel.qml is open. Same pattern again.
     property bool todoPanelOpen: false
 
+    // Whether windows/LockRetreatOverlay.qml is showing — not a normal
+    // user-toggled popup like the ones above, a one-shot trigger flipped
+    // true by home/quickshell-lock/LockContext.qml's own Process (via
+    // IpcManager's "lock-retreat" handler) the instant login succeeds.
+    // The overlay flips it back to false itself once its own retreat
+    // animation finishes — deliberately left out of closeAll() below,
+    // since force-closing it mid-retreat would cut the animation instead
+    // of letting it finish.
+    property bool lockRetreatOpen: false
+
+    // Same pattern, entrance side: windows/LockAssemblyOverlay.qml, one-
+    // shot triggered by home/syland-lock-trigger.nix's own script (the
+    // lock keybind, hypridle's idle-timeout — NOT boot/lock_cmd/
+    // before_sleep_cmd, see that file's own comment) via IpcManager's
+    // "lock-assembly" handler. Also left out of closeAll() for the same
+    // reason.
+    property bool lockAssemblyOpen: false
+
+    // Flipped true by home/quickshell-lock/LockSurface.qml's own
+    // readyTrigger, once the real lock surface actually exists — tells
+    // LockAssemblyOverlay.qml it's safe to hide now (see its own
+    // comment). A second, distinct flag from lockAssemblyOpen since
+    // hiding needs to wait on this *in addition to* the overlay's own
+    // entrance animation finishing, not instead of it.
+    property bool lockRealReady: false
+
     function closeAll() {
         menuOpen = false
         examplePanelOpen = false

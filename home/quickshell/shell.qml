@@ -58,6 +58,9 @@ ShellRoot {
                     screen: modelData
                     centerModule: centerModule
                 }
+
+                LockRetreatOverlay { screen: modelData }
+                LockAssemblyOverlay { screen: modelData }
             }
         }
     }

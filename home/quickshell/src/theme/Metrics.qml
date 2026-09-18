@@ -72,6 +72,26 @@ QtObject {
     property int settleOvershoot: 6
     property int settleDuration: 45
 
+    // quickshell-lock/LockSurface.qml's own six-panel lock/unlock assembly.
+    // Deliberately its own timing trio, not a reuse of animDuration/
+    // settleDuration/settleOvershoot above — those are the shared pacing
+    // for every popup in the *main* shell, and tuning the lock screen's
+    // own feel (much slower, much larger travel distance) shouldn't drag
+    // every other popup's speed along with it. How far each panel starts
+    // off-screen isn't a fixed pixel count here either — LockSurface.qml
+    // computes that itself from its own width/height (max(width,height)
+    // with margin), since a fixed number can't guarantee "fully past any
+    // edge" across differently-sized monitors the same way a screen-
+    // relative one does. lockBoxWidth/Height: the tab-and-notch content
+    // box the top/bottom bar panels key together around, sized to
+    // comfortably fit the clock/date/password field column already
+    // living there.
+    property int lockStageDuration: 600
+    property int lockSettleDuration: 200
+    property int lockSettleOvershoot: 24
+    property int lockBoxWidth: 340
+    property int lockBoxHeight: 220
+
     property string fontFamily: "ProggyClean Nerd Font Mono"
     property int fontSizeSmall: 11
     property int fontSizeRegular: 13
