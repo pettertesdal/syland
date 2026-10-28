@@ -46,10 +46,11 @@ PanelWindow {
 
     readonly property int boxWidth: contentPadding * 2 + meterWidth * 2 + dividerGap * 2 + dividerWidth
 
-    // outerValue/meterValue: which of the four SysStatsService readings
-    // lands in which zone — see the file comment above for the pairing.
-    readonly property int outerValue: align === "left" ? SysStatsService.cpu : SysStatsService.gpu
-    readonly property string outerLabel: align === "left" ? "CPU" : "GPU"
+    // outerValue/outerLabel: GPU reading for the right-hand StatsModule
+    // instance. The left instance's old CPU reading here is now
+    // components/ModeIndicator.qml instead -- see outerMeter below.
+    readonly property int outerValue: SysStatsService.gpu
+    readonly property string outerLabel: "GPU"
     // Temp (°C) reuses the same 0-100 scale RAM% already is — a rough
     // fit for the range coretemp actually reports (30-90°C).
     readonly property int meterValue: align === "left" ? SysStatsService.ram : SysStatsService.temp
@@ -79,17 +80,29 @@ PanelWindow {
             flipV: true
         }
 
-        StatMeter {
+        Item {
             id: outerMeter
             y: 0
             x: root.align === "left"
                 ? root.contentPadding
                 : parent.width - root.contentPadding - width
-            barCount: root.barCount
-            barWidth: root.barWidth
-            barSpacing: root.barSpacing
-            label: root.outerLabel
-            value: root.outerValue
+            width: root.meterWidth
+            height: Metrics.moduleContentHeight
+
+            StatMeter {
+                anchors.fill: parent
+                visible: root.align === "right"
+                barCount: root.barCount
+                barWidth: root.barWidth
+                barSpacing: root.barSpacing
+                label: root.outerLabel
+                value: root.outerValue
+            }
+
+            ModeIndicator {
+                anchors.fill: parent
+                visible: root.align === "left"
+            }
         }
 
         Rectangle {

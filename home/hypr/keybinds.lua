@@ -73,8 +73,4 @@ hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO
 hl.bind("SUPER + XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { long_press = true })
 hl.bind("SUPER + XF86AudioNext", hl.dsp.exec_cmd("playerctl position +5"))
 
--- focus mode (example submap — add more modes the same way)
-hl.bind(mainMod .. " + F1", hl.dsp.submap("focus"), { description = "Enter focus mode" })
-hl.define_submap("focus", function()
-    hl.bind("escape", hl.dsp.submap("reset"), { description = "Exit focus mode" })
-end)
+hl.bind(mainMod .. " + F1", hl.dsp.exec_cmd("qs ipc call focus-mode toggle"), { description = "Toggle focus mode" })

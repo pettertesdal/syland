@@ -28,6 +28,7 @@
     ./home/syland-todo.nix
     ./home/syland-sysstats.nix
     ./home/syland-lock.nix
+    ./home/syland-focus-mode.nix
     ./home/hypridle.nix
     ./home/obsidian.nix
   ];

@@ -57,6 +57,21 @@ QtObject {
         }
     }
 
+    // Bound to SUPER+F1 in home/hypr/keybinds.lua. Flips ShellState's flag
+    // (QML is the source of truth) and shells out to syland-focus-mode
+    // on/off to stop/start hypridle.service as a side effect -- same
+    // fire-and-forget exec() idiom as popups/ThemeSwitcher.qml's applyProc.
+    property IpcHandler _focusModeHandler: IpcHandler {
+        target: "focus-mode"
+
+        function toggle(): void {
+            ShellState.focusMode = !ShellState.focusMode
+            _focusModeProc.exec(["syland-focus-mode", ShellState.focusMode ? "on" : "off"])
+        }
+    }
+
+    property Process _focusModeProc: Process {}
+
     // Bind to a Hyprland keybind the same way, e.g.:
     //   hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("qs ipc call bluetooth-panel toggle"), { description = "Toggle bluetooth panel" })
     property IpcHandler _bluetoothPanelHandler: IpcHandler {
