@@ -41,6 +41,15 @@ let
           extensions.render-markdown-nvim.enable = true;
         };
         csharp.enable = true; # DscSimulation and future .NET work
+        rust.enable = true;
+        python.enable = true;
+        go.enable = true;
+        # nvf folds JS+TS into one module (its own description literally
+        # says "Typescript/Javascript language support") -- there's no
+        # separate nvf languages.javascript option, unlike devenv's
+        # per-project devenv.nix template (home/syland-context.nix's
+        # create), which has two distinct modules and enables both.
+        typescript.enable = true;
       };
 
       # claudecode.nvim: implements the real WebSocket/MCP protocol

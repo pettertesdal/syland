@@ -14,6 +14,12 @@ import QtQuick
 QtObject {
     property bool menuOpen: false
 
+    // Set by IpcManager's syland-menu context() just before flipping
+    // menuOpen true -- tells Picker.qml's own onOpenFlagChanged to push
+    // straight to this level instead of always resetting to root. Reset
+    // back to null by Picker itself once consumed.
+    property var menuPendingLevel: null
+
     // Whether popups/ExamplePanel.qml (the border-anchored sliding panel
     // demo) is open. Same pattern as menuOpen — a shared flag rather than
     // a property on one instance, since it's one-per-screen via Variants.

@@ -109,6 +109,8 @@ AnimatedPopup {
     property var stack: [{ type: "root" }]
     readonly property var currentLevel: stack[stack.length - 1]
     readonly property bool searching: searchField.text !== ""
+        && currentLevel.type !== "context-create-category-text"
+        && currentLevel.type !== "context-create-name"
 
     // Reactive, not a one-time snapshot: DesktopEntries.applications may
     // still be indexing when "Apps" is first selected, so this needs to
@@ -139,9 +141,39 @@ AnimatedPopup {
     // Every menu.jsonc entry at any depth, plus every app — global search.
     readonly property var globalSearchPool: allMenuEntries.concat(appEntries)
 
+    // Categories derived from the Context level's own already-fetched
+    // `entries` (label is "<category>/<name>", see syland-context's
+    // `list`) -- no new subcommand, no extra process spawn just to group
+    // data the script already emits.
+    readonly property var contextCategoryEntries: {
+        var seen = {}
+        var cats = []
+        entries.forEach(function (e) {
+            var cat = e.label.split("/")[0]
+            if (!seen[cat]) { seen[cat] = true; cats.push(cat) }
+        })
+        return cats.sort().map(function (c) {
+            return { label: c, kind: "context-create-category-item", category: c }
+        }).concat([{ label: "+ New category", kind: "context-create-category-new" }])
+    }
+
+    readonly property var contextLanguageEntries: [
+        { label: "Rust", kind: "context-create-language-item", language: "rust" },
+        { label: "Python", kind: "context-create-language-item", language: "python" },
+        { label: "Go", kind: "context-create-language-item", language: "go" },
+        { label: "JavaScript/TypeScript", kind: "context-create-language-item", language: "javascript" },
+        { label: "Nix", kind: "context-create-language-item", language: "nix" },
+        { label: "None", kind: "context-create-language-item", language: "none" }
+    ]
+
     readonly property var activeEntries: {
         if (currentLevel.type === "apps") return appEntries
-        if (currentLevel.type === "context") return entries
+        if (currentLevel.type === "context")
+            return entries.concat([{ label: "+ New Project", kind: "context-new" }])
+        if (currentLevel.type === "context-create-category") return contextCategoryEntries
+        if (currentLevel.type === "context-create-category-text") return []
+        if (currentLevel.type === "context-create-name") return []
+        if (currentLevel.type === "context-create-language") return contextLanguageEntries
         return searching ? globalSearchPool : browseChildren
     }
 
@@ -167,6 +199,11 @@ AnimatedPopup {
                 closeAnim.stop()
                 panel.beginOpen()
                 searchField.forceActiveFocus()
+                if (Popups.menuPendingLevel !== null) {
+                    var level = Popups.menuPendingLevel
+                    Popups.menuPendingLevel = null
+                    pushLevel({ type: level })
+                }
             } else {
                 openAnim.stop()
                 closeAnim.restart()
@@ -189,6 +226,19 @@ AnimatedPopup {
     }
 
     function runSelection() {
+        if (root.currentLevel.type === "context-create-category-text") {
+            var typedCategory = searchField.text.trim()
+            if (typedCategory.length === 0) return
+            pushLevel({ type: "context-create-name", category: typedCategory })
+            return
+        }
+        if (root.currentLevel.type === "context-create-name") {
+            var typedName = searchField.text.trim()
+            if (typedName.length === 0) return
+            pushLevel({ type: "context-create-language", category: root.currentLevel.category, name: typedName })
+            return
+        }
+
         var item = filteredEntries[currentIndex]
         if (!item) return
 
@@ -206,6 +256,16 @@ AnimatedPopup {
         } else if (item.kind === "context-item") {
             setContextProc.command = ["syland-context", "set", item.path]
             setContextProc.running = true
+            Popups.menuOpen = false
+        } else if (item.kind === "context-new") {
+            pushLevel({ type: "context-create-category" })
+        } else if (item.kind === "context-create-category-item") {
+            pushLevel({ type: "context-create-name", category: item.category })
+        } else if (item.kind === "context-create-category-new") {
+            pushLevel({ type: "context-create-category-text" })
+        } else if (item.kind === "context-create-language-item") {
+            createProjectProc.command = ["syland-context", "create", root.currentLevel.category, root.currentLevel.name, item.language]
+            createProjectProc.running = true
             Popups.menuOpen = false
         }
     }
@@ -238,6 +298,7 @@ AnimatedPopup {
     // Fire-and-forget processes: command is set right before each run.
     Process { id: runProc }
     Process { id: setContextProc }
+    Process { id: createProjectProc }
 
     Item {
         id: panel
@@ -344,7 +405,14 @@ AnimatedPopup {
                 visible: root.stack.length > 1 || root.searching
                 text: root.searching
                     ? "Searching everywhere"
-                    : root.stack.map(function (l) { return l.type === "tree" ? l.path : l.type }).join(" > ")
+                    : root.stack.map(function (l) {
+                        if (l.type === "tree") return l.path
+                        if (l.type === "context-create-name") return l.category
+                        if (l.type === "context-create-language") return l.category + "/" + l.name
+                        if (l.type === "context-create-category-text") return "new category"
+                        if (l.type === "context-create-category") return "new project"
+                        return l.type
+                    }).join(" > ")
                 color: Theme.foreground
                 opacity: 0.6
                 font.family: Metrics.fontFamily
@@ -354,7 +422,11 @@ AnimatedPopup {
             TextField {
                 id: searchField
                 width: parent.width
-                placeholderText: "Search..."
+                placeholderText: {
+                    if (root.currentLevel.type === "context-create-category-text") return "New category name…"
+                    if (root.currentLevel.type === "context-create-name") return "Project name…"
+                    return "Search..."
+                }
 
                 onTextChanged: root.currentIndex = 0
 
@@ -411,7 +483,7 @@ AnimatedPopup {
                         anchors.left: parent.left
                         anchors.leftMargin: Metrics.spacingSm
                         text: (entryRow.modelData.icon ? entryRow.modelData.icon + "  " : "") + entryRow.modelData.label
-                            + (entryRow.modelData.kind === "dir" || entryRow.modelData.kind === "provider" ? "  >" : "")
+                            + (["dir", "provider", "context-new", "context-create-category-item", "context-create-category-new"].includes(entryRow.modelData.kind) ? "  >" : "")
                         color: Theme.foreground
                         font.family: Metrics.fontFamily
                         font.pixelSize: Metrics.fontSizeRegular

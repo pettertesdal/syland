@@ -1,8 +1,8 @@
-# syland-context: finishes the project-switching/docs-reading scaffolding
-# that's already sitting in home/hypr/keybinds.lua and in
-# src/popups/Picker.qml's "Context" category (which already calls `list`
-# and `set <path>` -- nothing implementing either existed until now, same
-# situation syland-theme-apply was in before it got built).
+# syland-context: project-switching/docs-reading, plus per-project dev
+# terminals with their own persistent zellij session, plus `create` for
+# scaffolding a brand new project (see home/quickshell/src/popups/
+# Picker.qml's "+ New Project" flow and home/hypr/keybinds.lua's
+# SUPER+ALT+0 for the two new entry points into this).
 #
 # Reads the real ~/projects/<category>/<name>/{documents/,repo} convention
 # already in use (e.g. ~/projects/work/SeaR/repo, one repo per project --
@@ -20,11 +20,21 @@ let
 		# prepends runtimeInputs onto PATH rather than replacing it, so
 		# plain `nvim` still resolves to the nvf-configured binary already
 		# on the normal home-manager profile PATH.
-		runtimeInputs = [ pkgs.fzf pkgs.jq pkgs.findutils pkgs.coreutils pkgs.zellij pkgs.zathura pkgs.ghostty pkgs.hyprland ];
+		runtimeInputs = [
+			pkgs.fzf pkgs.jq pkgs.findutils pkgs.coreutils pkgs.zellij
+			pkgs.zathura pkgs.ghostty pkgs.hyprland
+			pkgs.git # create's git init on freshly scaffolded project repos
+		];
 		text = ''
 			PROJECTS_DIR="$HOME/projects"
 			STATE_DIR="$HOME/.config/syland/context"
 			STATE_FILE="$STATE_DIR/state.json"
+			# Which project's zellij session the currently-open devterm
+			# window (if any) was last spawned/attached with -- the one
+			# piece of state that makes toggle-devterm (below) able to
+			# tell "already open and already showing the right project"
+			# apart from "open, but showing someone else's session".
+			DEVTERM_SESSION_FILE="$STATE_DIR/devterm-session"
 			DEV_CLASS="com.syland.devterm"
 			mkdir -p "$STATE_DIR"
 
@@ -35,78 +45,154 @@ let
 				fi
 			}
 
-			# ensure_devterm <repo_path> -- makes the dev terminal show
-			# this project, reusing the existing window/session if one is
-			# already open instead of spawning a second one.
+			# sanitize_component <str> -- doubles any literal "-" first so
+			# the single "-" joining category and name in session_name_for
+			# below can never be mistaken for one that was already part of
+			# either string. Two *different* (category, name) pairs must
+			# never produce the *same* session name -- plain concatenation
+			# could collide (category="work-x" name="y" and category="work"
+			# name="x-y" would both naively become "work-x-y"); doubling
+			# first means the only unescaped single "-" left anywhere in
+			# the output is the real join point, so no two distinct pairs
+			# can ever land on the same string. Also collapses anything
+			# outside a conservative safe charset down to "_", since
+			# category/name come from real directory names that could in
+			# principle contain characters that would break the later
+			# `zellij --session <name>` invocation's own word-splitting.
+			sanitize_component() {
+				local s="$1"
+				s="''${s//-/--}"
+				printf '%s' "$s" | tr -c 'A-Za-z0-9_.-' '_'
+			}
+
+			# session_name_for <category> <name> -- deterministic,
+			# collision-free zellij session name for a project. One
+			# persistent session per project (not one shared "dev"
+			# session) -- see open_devterm's own comment for why.
+			session_name_for() {
+				local category="$1" name="$2"
+				printf '%s-%s' "$(sanitize_component "$category")" "$(sanitize_component "$name")"
+			}
+
+			# open_devterm <repo_path> <category> <name> -- makes the dev
+			# terminal show this specific project's own persistent zellij
+			# session, creating it fresh on first use. One-way "show" only
+			# -- never hides. See the toggle-devterm subcommand below for
+			# the symmetric toggle the dedicated keybind actually uses.
 			#
-			# Both branches below were verified live, not assumed:
-			# - Closing a session's last tab kills the whole session, so
-			#   new tabs are always created *before* the old ones are
-			#   closed (confirmed live: doing it the other way around
-			#   destroyed the session).
-			# - `new-tab --layout <name>` does NOT replicate a multi-tab
-			#   layout file (confirmed live: produced exactly one tab and
-			#   even ignored --name) -- hence two explicit new-tab calls.
-			# - `action switch-session`/`detach`, and session
-			#   resurrection, were both tried live as simpler
-			#   alternatives and rejected: switch-session sent to an
-			#   already-attached session had no visible effect at all
-			#   (confirmed via screenshot), and closed sessions didn't
-			#   show up as resurrectable even with session_serialization
-			#   explicitly enabled.
-			ensure_devterm() {
-				local repo_path="$1"
-				if hyprctl clients -j | jq -e --arg class "$DEV_CLASS" '.[] | select(.class == $class)' >/dev/null 2>&1; then
-					local old_tab_ids
-					mapfile -t old_tab_ids < <(zellij --session dev action list-tabs -j | jq -r '.[].tab_id')
-					zellij --session dev action new-tab --cwd "$repo_path" --name editor -- nvim
-					zellij --session dev action new-tab --cwd "$repo_path" --name shell
-					local id
-					for id in "''${old_tab_ids[@]}"; do
-						zellij --session dev action close-tab --tab-id "$id"
-					done
+			# Per-project sessions, not tab-juggling inside one shared
+			# "dev" session (that's what this function used to do -- the
+			# old zellij-tab-dance logic that went with it is gone, it was
+			# a workaround specific to the shared-session design).
+			# Swapping which project's session an *already open* window
+			# shows is NOT possible in-place: zellij action switch-session/
+			# detach sent via an external `zellij --session X action ...`
+			# invocation are CLIENT-scoped -- they create a disposable
+			# client that acts on itself and exits immediately, never
+			# touching the real long-lived client already attached inside
+			# the open ghostty window (confirmed live: switch-session sent
+			# to an already-attached session had no visible effect at
+			# all). The only mechanism that actually works is: close the
+			# window, then spawn a fresh one attached to the target
+			# session -- same idiom as first-ever creation.
+			open_devterm() {
+				local repo_path="$1" category="$2" name="$3"
+				local target_session
+				target_session=$(session_name_for "$category" "$name")
+
+				local existing_pid
+				existing_pid=$(hyprctl clients -j | jq -r --arg class "$DEV_CLASS" '.[] | select(.class == $class) | .pid' | head -n1)
+
+				local current_session=""
+				[ -f "$DEVTERM_SESSION_FILE" ] && current_session=$(cat "$DEVTERM_SESSION_FILE")
+
+				if [ -n "$existing_pid" ] && [ "$current_session" = "$target_session" ]; then
+					: # already open and already showing this project -- nothing to touch
 				else
-					# `zellij attach` has no --layout flag at all -- the
-					# "dev" layout can only be requested at creation time
-					# via `--new-session-with-layout`, which always
-					# starts fresh and errors if a session by that name
-					# already exists (both confirmed live). So: if a
-					# "dev" session is somehow already running (e.g. its
-					# window got closed without the session itself
-					# ending), just attach to whatever it already has;
-					# otherwise create it fresh with the right layout.
-					# Deliberately NOT `--session dev --layout dev` here
-					# -- that combination doesn't create anything either
-					# (confirmed live: "There is no active session!").
+					if [ -n "$existing_pid" ]; then
+						# A plain kill, not hyprctl dispatch closewindow --
+						# confirmed live this system's hyprlua integration
+						# intercepts every `hyprctl dispatch <x>` call and
+						# re-evaluates <x> as Lua (`hl.dispatch(<x>)`),
+						# so stock dispatcher syntax like
+						# "closewindow address:..." is a Lua parse error,
+						# not a valid dispatch. The Lua-wrapped equivalent,
+						# hl.dsp.window.close(), has no targeting
+						# parameter at all -- it only ever closes whatever
+						# window currently has focus (confirmed live: it
+						# closed an unrelated, coincidentally-focused
+						# window instead of the one a pid argument asked
+						# for). Killing the ghostty process directly by
+						# its own pid, already in hand from the same
+						# `hyprctl clients -j` query above, sidesteps
+						# both problems entirely.
+						kill "$existing_pid" >/dev/null 2>&1 || true
+					fi
+
+					# Same "attach if a session by this name is already
+					# running, otherwise create fresh with the layout"
+					# logic as before, just keyed off target_session
+					# instead of the one hardcoded "dev" session name.
+					# `zellij attach` has no --layout flag -- the "dev"
+					# layout (home/zellij.nix) can only be requested at
+					# creation time via --new-session-with-layout, which
+					# always starts fresh and errors if a session by that
+					# name already exists (both confirmed live).
 					local zj_cmd
-					if zellij list-sessions --short 2>/dev/null | grep -qx dev; then
-						zj_cmd="zellij attach dev"
+					if zellij list-sessions --short 2>/dev/null | grep -qx "$target_session"; then
+						zj_cmd="zellij attach $target_session"
 					else
-						zj_cmd="zellij --session dev --new-session-with-layout dev"
+						zj_cmd="zellij --session $target_session --new-session-with-layout dev"
 					fi
 					# Ghostty's own `detect` single-instance logic disables
 					# single-instance mode whenever CLI args are passed
 					# (confirmed in its own docs), so this always spawns a
-					# genuinely separate, fresh process -- never proxied
-					# to the long-running shared terminal instance the
-					# plain "open terminal" keybind uses. The dedicated
-					# class also drives the window rule in
-					# home/hypr/layerrules.lua that puts this on its own
-					# hidden special workspace.
+					# genuinely separate, fresh process -- never proxied to
+					# the long-running shared terminal instance the plain
+					# "open terminal" keybind uses. The dedicated class also
+					# drives the window rule in home/hypr/layerrules.lua
+					# that puts this on its own hidden special workspace.
 					ghostty --class="$DEV_CLASS" -e sh -c "cd '$repo_path' && exec $zj_cmd" >/dev/null 2>&1 &
 					disown
+					printf '%s' "$target_session" > "$DEVTERM_SESSION_FILE"
 				fi
 
-				# Toggling is a toggle, not a "show" -- only fire it if
-				# the special workspace isn't already the visible one, so
-				# repeated calls never accidentally hide it. Confirmed
-				# live: specialWorkspace.name is "" when hidden,
-				# "special:dev" when shown.
+				# One-way show, not a toggle -- only fire if the special
+				# workspace isn't already the visible one, so repeated
+				# calls never accidentally hide it. specialWorkspace.name
+				# is "" when hidden, "special:dev" when shown (confirmed
+				# live).
 				local current_special
 				current_special=$(hyprctl monitors -j | jq -r '.[0].specialWorkspace.name')
 				if [ "$current_special" != "special:dev" ]; then
 					hyprctl dispatch 'hl.dsp.workspace.toggle_special("dev")' >/dev/null 2>&1 || true
 				fi
+			}
+
+			# write_state <category> <name> <project_root> <repo_path> --
+			# shared by `set` and `create` (which already knows
+			# category/name directly rather than needing to parse them
+			# back out of a path).
+			write_state() {
+				local category="$1" name="$2" project_root="$3" repo_path="$4"
+				local rel="$category/$name"
+
+				local tmp
+				tmp=$(mktemp)
+				jq -nc --arg category "$category" --arg name "$name" \
+					--arg project_root "$project_root" --arg repo_path "$repo_path" \
+					'{category:$category, name:$name, project_root:$project_root, repo_path:$repo_path}' > "$tmp"
+				mv "$tmp" "$STATE_FILE"
+
+				# Keep ~/projects/current-project (a real symlink some
+				# shell workflows already reach for directly) pointed at
+				# the same project as state.json. Relative target, -sfn
+				# not just -sf -- current-project already exists as a
+				# symlink-to-directory, and plain `ln -s` against an
+				# existing symlink-to-dir places the new link *inside*
+				# that directory instead of replacing it; -n is what makes
+				# it overwrite in place.
+				ln -sfn "$rel" "$PROJECTS_DIR/current-project"
 			}
 
 			cmd="''${1:-}"
@@ -134,25 +220,99 @@ let
 					category="''${rel%%/*}"
 					name="''${rel#*/}"
 
-					tmp=$(mktemp)
-					jq -nc --arg category "$category" --arg name "$name" \
-						--arg project_root "$project_root" --arg repo_path "$repo_path" \
-						'{category:$category, name:$name, project_root:$project_root, repo_path:$repo_path}' > "$tmp"
-					mv "$tmp" "$STATE_FILE"
+					write_state "$category" "$name" "$project_root" "$repo_path"
+					open_devterm "$repo_path" "$category" "$name"
+					;;
+				create)
+					category="''${2:?usage: syland-context create <category> <name> <language>}"
+					name="''${3:?usage: syland-context create <category> <name> <language>}"
+					language="''${4:?usage: syland-context create <category> <name> <language>}"
 
-					# Keep ~/projects/current-project (a real symlink some
-					# shell workflows already reach for directly) pointed
-					# at the same project as state.json, not just a second
-					# disconnected notion of "current". Relative target
-					# (not absolute), matching how it was already set up
-					# by hand. -sfn, not just -sf: current-project already
-					# exists as a symlink-to-directory, and plain `ln -s`
-					# against an existing symlink-to-dir places the new
-					# link *inside* that directory instead of replacing
-					# it -- `-n` is what makes it overwrite in place.
-					ln -sfn "$rel" "$PROJECTS_DIR/current-project"
+					# category/name must be single safe path components --
+					# they're joined directly into $PROJECTS_DIR below.
+					case "$category" in */*|.|..|"") echo "syland-context: invalid category '$category'" >&2; exit 1 ;; esac
+					case "$name" in */*|.|..|"") echo "syland-context: invalid name '$name'" >&2; exit 1 ;; esac
 
-					ensure_devterm "$repo_path"
+					project_root="$PROJECTS_DIR/$category/$name"
+					repo_path="$project_root/repo"
+
+					if [ -e "$project_root" ]; then
+						echo "syland-context: $project_root already exists" >&2
+						exit 1
+					fi
+
+					mkdir -p "$project_root/documents" "$repo_path"
+					# git init'ing the new repo dir is a deliberate default
+					# for every new project created this way, not an
+					# incidental side effect -- same spirit as always
+					# creating documents/ alongside it.
+					git -C "$repo_path" init -q
+
+					# Hand-authored devenv.nix per language, not `devenv
+					# init`'s own generated output -- one small template
+					# per language, no post-hoc patching.
+					case "$language" in
+						rust)
+							cat > "$repo_path/devenv.nix" <<-'EOF'
+								{ pkgs, ... }:
+								{
+								  languages.rust.enable = true;
+								}
+							EOF
+							;;
+						python)
+							cat > "$repo_path/devenv.nix" <<-'EOF'
+								{ pkgs, ... }:
+								{
+								  languages.python.enable = true;
+								}
+							EOF
+							;;
+						go)
+							cat > "$repo_path/devenv.nix" <<-'EOF'
+								{ pkgs, ... }:
+								{
+								  languages.go.enable = true;
+								}
+							EOF
+							;;
+						javascript)
+							# devenv has distinct languages.javascript and
+							# languages.typescript modules (confirmed
+							# against cachix/devenv's own source) --
+							# enabling both for this one choice is
+							# deliberate, not an oversight (nvf.nix's own
+							# typescript module folds both into one).
+							cat > "$repo_path/devenv.nix" <<-'EOF'
+								{ pkgs, ... }:
+								{
+								  languages.javascript.enable = true;
+								  languages.typescript.enable = true;
+								}
+							EOF
+							;;
+						nix)
+							cat > "$repo_path/devenv.nix" <<-'EOF'
+								{ pkgs, ... }:
+								{
+								  languages.nix.enable = true;
+								}
+							EOF
+							;;
+						none)
+							;; # bare repo, no devenv.nix at all
+						*)
+							echo "syland-context: unknown language '$language' (expected rust|python|go|javascript|nix|none)" >&2
+							exit 1
+							;;
+					esac
+
+					if [ "$language" != "none" ]; then
+						printf 'use devenv\n' > "$repo_path/.envrc"
+					fi
+
+					write_state "$category" "$name" "$project_root" "$repo_path"
+					open_devterm "$repo_path" "$category" "$name"
 					;;
 				open)
 					require_state
@@ -184,13 +344,36 @@ let
 							disown
 							;;
 						project)
-							ensure_devterm "$repo_path"
+							open_devterm "$repo_path" "$(jq -r .category "$STATE_FILE")" "$(jq -r .name "$STATE_FILE")"
 							;;
 						*)
 							echo "usage: syland-context open {pdf|docs|project}" >&2
 							exit 1
 							;;
 					esac
+					;;
+				toggle-devterm)
+					# The symmetric toggle SUPER+ALT+0 (home/hypr/keybinds.lua)
+					# calls -- unlike open_devterm's own one-way "show", this
+					# one actually hides the special workspace when the
+					# devterm window is already open, already showing the
+					# current project's own session, and already visible.
+					require_state
+					category=$(jq -r .category "$STATE_FILE")
+					name=$(jq -r .name "$STATE_FILE")
+					repo_path=$(jq -r .repo_path "$STATE_FILE")
+					target_session=$(session_name_for "$category" "$name")
+
+					existing_pid=$(hyprctl clients -j | jq -r --arg class "$DEV_CLASS" '.[] | select(.class == $class) | .pid' | head -n1)
+					current_session=""
+					[ -f "$DEVTERM_SESSION_FILE" ] && current_session=$(cat "$DEVTERM_SESSION_FILE")
+					current_special=$(hyprctl monitors -j | jq -r '.[0].specialWorkspace.name')
+
+					if [ -n "$existing_pid" ] && [ "$current_session" = "$target_session" ] && [ "$current_special" = "special:dev" ]; then
+						hyprctl dispatch 'hl.dsp.workspace.toggle_special("dev")' >/dev/null 2>&1 || true
+					else
+						open_devterm "$repo_path" "$category" "$name"
+					fi
 					;;
 				current)
 					if [ -f "$STATE_FILE" ]; then
@@ -200,7 +383,7 @@ let
 					fi
 					;;
 				*)
-					echo "usage: syland-context {list|set <repo_path>|open {pdf|docs|project}|current}" >&2
+					echo "usage: syland-context {list|set <repo_path>|create <category> <name> <language>|open {pdf|docs|project}|toggle-devterm|current}" >&2
 					exit 1
 					;;
 			esac

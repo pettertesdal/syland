@@ -26,6 +26,15 @@ QtObject {
             Popups.menuOpen = !Popups.menuOpen
         }
 
+        // Bound to SUPER+C in home/hypr/keybinds.lua -- opens the picker
+        // straight at the Context level rather than root, same one-IPC-
+        // target-multiple-functions pattern keybinds() already
+        // establishes on this same handler.
+        function context(): void {
+            Popups.menuPendingLevel = "context"
+            Popups.menuOpen = true
+        }
+
         function keybinds(): void {
             // Not implemented yet — syland-keybinds isn't wired into the
             // picker's UI yet. Hyprland's SUPER+SHIFT+SPACE already calls

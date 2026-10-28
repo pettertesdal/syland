@@ -17,13 +17,17 @@ hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen(), { description = "Toggle f
 -- syland
 hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("qs ipc call syland-menu toggle"), { description = "Open menu" })
 hl.bind(mainMod .. " + SHIFT + SPACE", hl.dsp.exec_cmd("qs ipc call syland-menu keybinds"), { description = "Search keybinds" })
-hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("syland-context open project"), { description = "Open current project's dev terminal" })
--- Lightweight toggle for the same "special:dev" workspace SUPER+C above
--- ensures/shows -- this one just flips visibility (hl.dsp.workspace's
--- own toggle_special, same dispatcher home/hypr/layerrules.lua's own
--- comment confirms live), with none of SUPER+C's ensure_devterm setup
--- work (creating the zellij session/tabs if they don't exist yet).
-hl.bind(mainMod .. " + ALT + C", hl.dsp.workspace.toggle_special("dev"), { description = "Toggle project workspace" })
+-- Opens the picker directly at the Context level (IpcManager.qml's
+-- syland-menu context() function, alongside its existing toggle()).
+hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("qs ipc call syland-menu context"), { description = "Open project picker" })
+-- NOT SUPER + 0 -- the workspace loop below already binds that to
+-- "focus workspace 10" (i % 10 maps 10 -> key "0"). ALT + 0 is free.
+-- A true toggle, unlike the old one-way-show SUPER+C: ensures the
+-- devterm window is showing the current project's own zellij session
+-- (closing/respawning it if it's showing a different project's,
+-- creating fresh if no window exists at all), and hides the special
+-- workspace if it's already open, correct, and visible.
+hl.bind(mainMod .. " + ALT + 0", hl.dsp.exec_cmd("syland-context toggle-devterm"), { description = "Toggle current project's dev terminal" })
 hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("syland-context open pdf"), { description = "Open context PDF" })
 -- ALT + P freed up: syland-context's "notes" subcommand (per-project
 -- TODO.md) is retired now that the Taskwarrior panel (SUPER + ALT + T)
