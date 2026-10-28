@@ -61,4 +61,6 @@
 			StandardError = "journal";
 		};
 	};
+
+	systemd.services."autovt@tty1".enable = false;
 }

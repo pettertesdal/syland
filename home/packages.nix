@@ -19,5 +19,6 @@
     zathura
     zen-browser
     taskwarrior3
+    wireshark-cli
   ];
 }

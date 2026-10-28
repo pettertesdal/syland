@@ -26,6 +26,7 @@
     ./config/gpu-stats.nix
     ./config/lock.nix
     ./config/hyprland-session.nix
+    ./config/steam.nix
   ];
 
   # This option defines the first version of NixOS you have installed on this particular machine,
