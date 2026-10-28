@@ -20,14 +20,17 @@ hl.bind(mainMod .. " + SHIFT + SPACE", hl.dsp.exec_cmd("qs ipc call syland-menu 
 -- Opens the picker directly at the Context level (IpcManager.qml's
 -- syland-menu context() function, alongside its existing toggle()).
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("qs ipc call syland-menu context"), { description = "Open project picker" })
--- NOT SUPER + 0 -- the workspace loop below already binds that to
--- "focus workspace 10" (i % 10 maps 10 -> key "0"). ALT + 0 is free.
+-- SUPER + 0 would normally collide with the workspace loop below
+-- (i % 10 maps workspace 10 to key "0") -- that loop's own focus-bind
+-- for key 0 is skipped for exactly this reason; workspace 10 is still
+-- reachable via SUPER + SHIFT + 0 (move a window there) or scrolling
+-- workspaces, just not a direct focus keybind anymore.
 -- A true toggle, unlike the old one-way-show SUPER+C: ensures the
 -- devterm window is showing the current project's own zellij session
 -- (closing/respawning it if it's showing a different project's,
 -- creating fresh if no window exists at all), and hides the special
 -- workspace if it's already open, correct, and visible.
-hl.bind(mainMod .. " + ALT + 0", hl.dsp.exec_cmd("syland-context toggle-devterm"), { description = "Toggle current project's dev terminal" })
+hl.bind(mainMod .. " + 0", hl.dsp.exec_cmd("syland-context toggle-devterm"), { description = "Toggle current project's dev terminal" })
 hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("syland-context open pdf"), { description = "Open context PDF" })
 -- ALT + P freed up: syland-context's "notes" subcommand (per-project
 -- TODO.md) is retired now that the Taskwarrior panel (SUPER + ALT + T)
@@ -48,7 +51,12 @@ hl.bind(mainMod .. " + ALT + L", hl.dsp.exec_cmd("qs ipc call lock-assembly trig
 -- workspaces — VERIFY: exact workspace-switch/move dispatcher names
 for i = 1, 10 do
     local key = i % 10 -- 10 maps to key 0
-    hl.bind(mainMod .. " + " .. key, hl.dsp.focus({ workspace = key}), { description = "Workspace " .. i })
+    -- key 0 (workspace 10) skips its own focus-bind -- SUPER + 0 is
+    -- reserved for toggling the project dev terminal (above). Move-to
+    -- (SHIFT + 0) is unaffected, workspace 10 stays reachable that way.
+    if key ~= 0 then
+        hl.bind(mainMod .. " + " .. key, hl.dsp.focus({ workspace = key}), { description = "Workspace " .. i })
+    end
     hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = key}), { description = "Move to workspace " .. i })
 end
 
