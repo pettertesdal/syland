@@ -63,6 +63,21 @@ QtObject {
     // entrance animation finishing, not instead of it.
     property bool lockRealReady: false
 
+    // Whether a lock sequence (assembly entrance, real lock resting, or
+    // retreat) is currently in progress, start to finish. Separate from
+    // lockRealReady -- that flag only tracks "has THIS entrance's real
+    // lock surface confirmed up yet" and goes stale/stuck true after an
+    // unlock (nothing resets it until the next entrance starts), so it
+    // can't double as "are we currently locked". This is the flag
+    // IpcManager's "lock-assembly" trigger() checks before starting a
+    // new cycle, so hypridle's idle-timeout re-firing the same IPC call
+    // while already locked can't stack a second entrance underneath the
+    // real lock. Set true the instant a trigger is accepted, reset false
+    // by windows/LockRetreatOverlay.qml's own retreatAnimation.onFinished
+    // -- the point the user is actually back on a genuinely unlocked,
+    // interactive desktop.
+    property bool locked: false
+
     function closeAll() {
         menuOpen = false
         examplePanelOpen = false

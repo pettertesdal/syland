@@ -182,6 +182,13 @@ PanelWindow {
         property date now: new Date()
         interval: 1000
         running: root.shown
+        // Without this, a Timer doesn't fire on the same tick `running`
+        // flips true -- it waits a full interval first -- so `now` would
+        // stay stuck at whatever it was the last time this window was
+        // shown (this overlay's own fade-in is only 600ms, shorter than
+        // the 1000ms interval, so the first tick would never even land
+        // before the window faded out again).
+        triggeredOnStart: true
         repeat: true
         onTriggered: now = new Date()
     }
@@ -260,6 +267,10 @@ PanelWindow {
         onFinished: {
             root.shown = false
             Popups.lockRetreatOpen = false
+            // The user is genuinely back on an unlocked, interactive
+            // desktop now -- see Popups.locked's own comment for what
+            // this guards.
+            Popups.locked = false
             contentColumn.opacity = 1
             panelTL.x = 0; panelTL.y = 0
             panelBR.x = 0; panelBR.y = 0

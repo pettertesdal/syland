@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import "../"
 
 // Always-visible notification-state indicator, split out from
@@ -57,6 +58,14 @@ PanelWindow {
     // Bound to tab's own live bounds, so this keeps tracking correctly as
     // tab.x slides.
     mask: Region { item: tab }
+
+    // Hidden whenever this module's own monitor has a fullscreen window
+    // active -- nothing from quickshell should cover a fullscreen app.
+    // Kept in sync with popups/NotificationCenter.qml's own
+    // AnimatedPopup-driven hide, so the notch doesn't linger once the
+    // panel it belongs to has disappeared.
+    readonly property bool fullscreenActive: Hyprland.monitorFor(root.screen)?.activeWorkspace?.hasFullscreen === true
+    visible: !fullscreenActive
 
     readonly property int tabDepth: 10
     // Mirrors popups/NotificationCenter.qml's own `panelWidth`/

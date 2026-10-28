@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import "../"
 import "../shapes"
 
@@ -80,6 +81,11 @@ PanelWindow {
     // widening the mask to cover it too.
     mask: Region { item: box }
 
+    // Hidden whenever this module's own monitor has a fullscreen window
+    // active -- nothing from quickshell should cover a fullscreen app.
+    readonly property bool fullscreenActive: Hyprland.monitorFor(root.screen)?.activeWorkspace?.hasFullscreen === true
+    visible: !fullscreenActive
+
     // The "cassette" — a small decorative shape (rectangle + two reels,
     // matching the mockup) that slides up into place under the left
     // module the moment music starts, reversing when it stops. Declared
@@ -145,6 +151,12 @@ PanelWindow {
                 ? root.centerModule.boxX - width - Metrics.centerGap
                 : root.centerModule.boxX + root.centerModule.boxWidth + Metrics.centerGap)
             : 0
+        // centerModule.boxX can briefly report a wrong value right after
+        // that window remaps (e.g. exiting fullscreen) before settling —
+        // see components/HangingModule.qml's own Behavior on x for the
+        // same fix on the source side. Without this too, the correction
+        // itself still snaps instead of gliding.
+        Behavior on x { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
 
         MusicModuleShape {
             anchors.fill: parent

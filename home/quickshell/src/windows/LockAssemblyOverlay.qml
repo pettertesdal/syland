@@ -356,6 +356,11 @@ PanelWindow {
         property date now: new Date()
         interval: 1000
         running: root.shown
+        // Without this, a Timer doesn't fire on the same tick `running`
+        // flips true -- it waits a full interval first -- so `now` would
+        // stay stuck at whatever it was the last time this window was
+        // shown until a full second had already passed.
+        triggeredOnStart: true
         repeat: true
         onTriggered: now = new Date()
     }

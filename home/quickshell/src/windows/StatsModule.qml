@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import "../"
 import "../shapes"
 import "../components"
@@ -20,11 +21,13 @@ import "../components"
 // boxWidth: 0. popups/ThemeSwitcher.qml's own panelWidth mirrors this
 // same substitution for its own snug-fit sizing.
 //
-// Four stats (CPU/GPU/RAM/Temp), paired left/right (CPU+RAM, GPU+Temp)
-// across each box's two content zones — both zones now identical
-// components/StatMeter.qml instances (label above segmented bars); they
-// started as asymmetric (outer: plain text, inner: bars-only) before
-// converging on the same treatment for every stat.
+// Left box: focus mode + current project (components/TextMeter.qml,
+// label above a short text value). Right box: GPU + Temp
+// (components/StatMeter.qml, label above segmented bars) — the system
+// stats that still get a bar reading. Both zones share the same
+// label-above/content-below footprint regardless of which component
+// fills them, so the box/divider layout below doesn't care which is
+// which.
 PanelWindow {
     id: root
 
@@ -47,14 +50,17 @@ PanelWindow {
     readonly property int boxWidth: contentPadding * 2 + meterWidth * 2 + dividerGap * 2 + dividerWidth
 
     // outerValue/outerLabel: GPU reading for the right-hand StatsModule
-    // instance. The left instance's old CPU reading here is now
-    // components/ModeIndicator.qml instead -- see outerMeter below.
+    // instance. The left instance's own outer zone is a TextMeter
+    // (focus mode) instead -- see outerMeter below.
     readonly property int outerValue: SysStatsService.gpu
     readonly property string outerLabel: "GPU"
-    // Temp (°C) reuses the same 0-100 scale RAM% already is — a rough
-    // fit for the range coretemp actually reports (30-90°C).
-    readonly property int meterValue: align === "left" ? SysStatsService.ram : SysStatsService.temp
-    readonly property string meterLabel: align === "left" ? "RAM" : "TMP"
+    // meterValue/meterLabel: Temp (°C) reading for the right-hand
+    // instance only now -- the left instance's own inner zone is a
+    // TextMeter (current project) instead, see innerMeter below. Temp
+    // reuses the same 0-100 scale RAM% used to — a rough fit for the
+    // range coretemp actually reports (30-90°C).
+    readonly property int meterValue: SysStatsService.temp
+    readonly property string meterLabel: "TMP"
 
     anchors { bottom: true; left: true; right: true }
     implicitHeight: Metrics.moduleHeight
@@ -62,6 +68,11 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Top
     mask: Region { item: box }
+
+    // Hidden whenever this module's own monitor has a fullscreen window
+    // active -- nothing from quickshell should cover a fullscreen app.
+    readonly property bool fullscreenActive: Hyprland.monitorFor(root.screen)?.activeWorkspace?.hasFullscreen === true
+    visible: !fullscreenActive
 
     Item {
         id: box
@@ -99,9 +110,11 @@ PanelWindow {
                 value: root.outerValue
             }
 
-            ModeIndicator {
+            TextMeter {
                 anchors.fill: parent
                 visible: root.align === "left"
+                label: "MODE"
+                value: ShellState.currentMode
             }
         }
 
@@ -116,16 +129,31 @@ PanelWindow {
             color: Theme.foreground
         }
 
-        StatMeter {
+        Item {
+            id: innerMeter
             y: 0
             x: root.align === "left"
                 ? divider.x + divider.width + root.dividerGap
                 : divider.x - root.dividerGap - width
-            barCount: root.barCount
-            barWidth: root.barWidth
-            barSpacing: root.barSpacing
-            label: root.meterLabel
-            value: root.meterValue
+            width: root.meterWidth
+            height: Metrics.moduleContentHeight
+
+            StatMeter {
+                anchors.fill: parent
+                visible: root.align === "right"
+                barCount: root.barCount
+                barWidth: root.barWidth
+                barSpacing: root.barSpacing
+                label: root.meterLabel
+                value: root.meterValue
+            }
+
+            TextMeter {
+                anchors.fill: parent
+                visible: root.align === "left"
+                label: "PROJECT"
+                value: ProjectContextService.projectName
+            }
         }
     }
 }

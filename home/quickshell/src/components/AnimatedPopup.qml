@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import "../"
 
 // Shared open/close motion, extracted from popups/ExamplePanel.qml once
@@ -41,7 +42,11 @@ PanelWindow {
 
     property bool keepVisible: false
     property bool windowVisible: false
-    visible: windowVisible || keepVisible
+    // Hidden whenever this popup's own monitor has a fullscreen window
+    // active -- nothing from quickshell should cover a fullscreen app,
+    // popups included. Covers every AnimatedPopup consumer in one place.
+    readonly property bool fullscreenActive: Hyprland.monitorFor(root.screen)?.activeWorkspace?.hasFullscreen === true
+    visible: (windowVisible || keepVisible) && !fullscreenActive
 
     onOpenFlagChanged: {
         if (openFlag) {

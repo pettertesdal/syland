@@ -18,6 +18,12 @@ hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen(), { description = "Toggle f
 hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("qs ipc call syland-menu toggle"), { description = "Open menu" })
 hl.bind(mainMod .. " + SHIFT + SPACE", hl.dsp.exec_cmd("qs ipc call syland-menu keybinds"), { description = "Search keybinds" })
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("syland-context open project"), { description = "Open current project's dev terminal" })
+-- Lightweight toggle for the same "special:dev" workspace SUPER+C above
+-- ensures/shows -- this one just flips visibility (hl.dsp.workspace's
+-- own toggle_special, same dispatcher home/hypr/layerrules.lua's own
+-- comment confirms live), with none of SUPER+C's ensure_devterm setup
+-- work (creating the zellij session/tabs if they don't exist yet).
+hl.bind(mainMod .. " + ALT + C", hl.dsp.workspace.toggle_special("dev"), { description = "Toggle project workspace" })
 hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("syland-context open pdf"), { description = "Open context PDF" })
 -- ALT + P freed up: syland-context's "notes" subcommand (per-project
 -- TODO.md) is retired now that the Taskwarrior panel (SUPER + ALT + T)

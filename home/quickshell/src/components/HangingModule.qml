@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import "../"
 import "../shapes"
 
@@ -64,6 +65,13 @@ PanelWindow {
     WlrLayershell.layer: (grown || maxYShift > 0) ? WlrLayer.Overlay : WlrLayer.Top
     mask: Region { item: box }
 
+    // Hidden whenever this module's own monitor has a fullscreen window
+    // active -- nothing from quickshell should cover a fullscreen app.
+    // Covers LeftModule/CenterModule/RightModule in one place, since all
+    // three are built on this component.
+    readonly property bool fullscreenActive: Hyprland.monitorFor(root.screen)?.activeWorkspace?.hasFullscreen === true
+    visible: !fullscreenActive
+
     property string align: "left" // "left" | "center" | "right"
     property int boxWidth: 100
     default property alias content: contentItem.data
@@ -102,6 +110,15 @@ PanelWindow {
         height: root.grown ? root.grownHeight : Metrics.moduleHeight
         Behavior on width { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
         Behavior on height { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
+        // Without this, a brief wrong value here (e.g. parent.width
+        // momentarily reporting a stale/placeholder size right after
+        // this window remaps -- same class of thing
+        // windows/LockAssemblyOverlay.qml's own farOffscreen/startDelay
+        // comments document for a fresh Wayland map) snaps visibly
+        // instead of settling smoothly. windows/MusicModule.qml reads
+        // this module's boxX for its own positioning, so this also
+        // smooths that knock-on effect.
+        Behavior on x { NumberAnimation { duration: Metrics.animDuration; easing.type: Easing.Linear } }
         y: root.yShift
         x: {
             if (root.align === "left") return Metrics.moduleMargin

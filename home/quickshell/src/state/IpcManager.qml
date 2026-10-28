@@ -131,6 +131,13 @@ QtObject {
         target: "lock-assembly"
 
         function trigger(): void {
+            // Guards against hypridle's idle-timeout re-firing this same
+            // call while a lock is already in progress (e.g. the keybind
+            // locked it manually, then 5 more idle minutes pass) -- see
+            // Popups.locked's own comment for why lockRealReady can't be
+            // used for this check instead.
+            if (Popups.locked) return
+            Popups.locked = true
             Popups.lockAssemblyOpen = true
         }
 
