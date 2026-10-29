@@ -157,14 +157,11 @@ AnimatedPopup {
         }).concat([{ label: "+ New category", kind: "context-create-category-new" }])
     }
 
-    readonly property var contextLanguageEntries: [
-        { label: "Rust", kind: "context-create-language-item", language: "rust" },
-        { label: "Python", kind: "context-create-language-item", language: "python" },
-        { label: "Go", kind: "context-create-language-item", language: "go" },
-        { label: "JavaScript/TypeScript", kind: "context-create-language-item", language: "javascript" },
-        { label: "Nix", kind: "context-create-language-item", language: "nix" },
-        { label: "None", kind: "context-create-language-item", language: "none" }
-    ]
+    // Fetched from syland-context list-languages (languageListProc below)
+    // when the context-create-language level is entered -- driven
+    // directly off whatever presets actually exist under
+    // home/syland-context-devenvs/, not a hardcoded list here.
+    property var languages: []
 
     readonly property var activeEntries: {
         if (currentLevel.type === "apps") return appEntries
@@ -173,7 +170,7 @@ AnimatedPopup {
         if (currentLevel.type === "context-create-category") return contextCategoryEntries
         if (currentLevel.type === "context-create-category-text") return []
         if (currentLevel.type === "context-create-name") return []
-        if (currentLevel.type === "context-create-language") return contextLanguageEntries
+        if (currentLevel.type === "context-create-language") return languages
         return searching ? globalSearchPool : browseChildren
     }
 
@@ -216,6 +213,7 @@ AnimatedPopup {
         searchField.text = ""
         currentIndex = 0
         if (level.type === "context") contextListProc.running = true
+        if (level.type === "context-create-language") languageListProc.running = true
     }
 
     function popLevel() {
@@ -290,6 +288,20 @@ AnimatedPopup {
                 root.entries = lines.map(function (l) {
                     var e = JSON.parse(l)
                     return { label: e.label, kind: "context-item", path: e.path }
+                })
+            }
+        }
+    }
+
+    Process {
+        id: languageListProc
+        command: ["syland-context", "list-languages"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var lines = this.text.split("\n").filter(function (l) { return l.length > 0 })
+                root.languages = lines.map(function (l) {
+                    var e = JSON.parse(l)
+                    return { label: e.label, kind: "context-create-language-item", language: e.language }
                 })
             }
         }

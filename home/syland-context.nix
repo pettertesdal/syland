@@ -35,6 +35,14 @@ let
 			# tell "already open and already showing the right project"
 			# apart from "open, but showing someone else's session".
 			DEVTERM_SESSION_FILE="$STATE_DIR/devterm-session"
+			# One <language>.nix per preset, deployed from
+			# home/syland-context-devenvs/ (see this module's own
+			# home.file entry below) -- a live symlink to the repo, not
+			# copied into the Nix store, so adding/editing a preset here
+			# takes effect immediately with no rebuild. `create` below
+			# just copies the matching file; there's no "none.nix" since
+			# that language means "write nothing".
+			DEVENVS_DIR="$HOME/.config/syland/context/devenvs"
 			DEV_CLASS="com.syland.devterm"
 			mkdir -p "$STATE_DIR"
 
@@ -197,6 +205,37 @@ let
 
 			cmd="''${1:-}"
 			case "$cmd" in
+				list-languages)
+					# One line per devenv preset -- matches
+					# src/popups/Picker.qml's languageListProc, which
+					# expects {label, language} per line, same shape
+					# `list` already uses for {label, path}. Drives the
+					# language picker directly off whatever's actually in
+					# DEVENVS_DIR, so adding/removing a preset there is
+					# the only change needed to add/remove a picker
+					# option too -- see DEVENVS_DIR's own comment above
+					# for why that's a live symlink, not a store copy.
+					# "none" has no file (it means "write nothing") so
+					# it's appended as a synthetic entry instead.
+					find -L "$DEVENVS_DIR" -maxdepth 1 -name '*.nix' 2>/dev/null \
+						| sort \
+						| while read -r preset_path; do
+							language="$(basename "$preset_path" .nix)"
+							# A leading "# label: <text>" comment in the
+							# preset file overrides the default
+							# capitalized-filename label -- lets a
+							# preset's own display name (e.g.
+							# "JavaScript/TypeScript" for javascript.nix)
+							# live right next to the config it describes,
+							# rather than needing a second place to edit.
+							label=$(sed -n 's/^# label: //p' "$preset_path" | head -n1)
+							if [ -z "$label" ]; then
+								label="$(printf '%s' "$language" | sed 's/^./\U&/')"
+							fi
+							jq -nc --arg label "$label" --arg language "$language" '{label:$label, language:$language}'
+						done
+					jq -nc '{label:"None", language:"none"}'
+					;;
 				list)
 					# One line per project's repo dir -- matches
 					# src/popups/Picker.qml's contextListProc, which
@@ -248,66 +287,25 @@ let
 					# creating documents/ alongside it.
 					git -C "$repo_path" init -q
 
-					# Hand-authored devenv.nix per language, not `devenv
-					# init`'s own generated output -- one small template
-					# per language, no post-hoc patching.
-					case "$language" in
-						rust)
-							cat > "$repo_path/devenv.nix" <<-'EOF'
-								{ pkgs, ... }:
-								{
-								  languages.rust.enable = true;
-								}
-							EOF
-							;;
-						python)
-							cat > "$repo_path/devenv.nix" <<-'EOF'
-								{ pkgs, ... }:
-								{
-								  languages.python.enable = true;
-								}
-							EOF
-							;;
-						go)
-							cat > "$repo_path/devenv.nix" <<-'EOF'
-								{ pkgs, ... }:
-								{
-								  languages.go.enable = true;
-								}
-							EOF
-							;;
-						javascript)
-							# devenv has distinct languages.javascript and
-							# languages.typescript modules (confirmed
-							# against cachix/devenv's own source) --
-							# enabling both for this one choice is
-							# deliberate, not an oversight (nvf.nix's own
-							# typescript module folds both into one).
-							cat > "$repo_path/devenv.nix" <<-'EOF'
-								{ pkgs, ... }:
-								{
-								  languages.javascript.enable = true;
-								  languages.typescript.enable = true;
-								}
-							EOF
-							;;
-						nix)
-							cat > "$repo_path/devenv.nix" <<-'EOF'
-								{ pkgs, ... }:
-								{
-								  languages.nix.enable = true;
-								}
-							EOF
-							;;
-						none)
-							;; # bare repo, no devenv.nix at all
-						*)
-							echo "syland-context: unknown language '$language' (expected rust|python|go|javascript|nix|none)" >&2
-							exit 1
-							;;
-					esac
-
+					# Hand-authored devenv.nix per language, copied verbatim
+					# from DEVENVS_DIR -- not `devenv init`'s own
+					# generated output, and not generated inline here
+					# either, so adding/editing a preset is just
+					# adding/editing a file under
+					# home/syland-context-devenvs/, no shell-script
+					# changes needed.
 					if [ "$language" != "none" ]; then
+						if [ ! -f "$DEVENVS_DIR/$language.nix" ]; then
+							# -L: DEVENVS_DIR is itself a symlink to the repo
+						# (see its own comment above) -- plain find
+						# wouldn't traverse into it at all, same reason
+						# `list` above already needs -L for symlinked repo
+						# dirs.
+						available=$(find -L "$DEVENVS_DIR" -maxdepth 1 -name '*.nix' -printf '%f\n' 2>/dev/null | sed 's/\.nix$//' | sort | tr '\n' ' ')
+							echo "syland-context: unknown language '$language' -- no $DEVENVS_DIR/$language.nix preset (available: ''${available}none)" >&2
+							exit 1
+						fi
+						cp "$DEVENVS_DIR/$language.nix" "$repo_path/devenv.nix"
 						printf 'use devenv\n' > "$repo_path/.envrc"
 					fi
 
@@ -383,7 +381,7 @@ let
 					fi
 					;;
 				*)
-					echo "usage: syland-context {list|set <repo_path>|create <category> <name> <language>|open {pdf|docs|project}|toggle-devterm|current}" >&2
+					echo "usage: syland-context {list|list-languages|set <repo_path>|create <category> <name> <language>|open {pdf|docs|project}|toggle-devterm|current}" >&2
 					exit 1
 					;;
 			esac
@@ -391,4 +389,8 @@ let
 	};
 in {
 	home.packages = [ sylandContext ];
+	# A live symlink to the repo, not copied into the store -- see
+	# DEVENVS_DIR's own comment above for why that matters (editing a
+	# preset here takes effect immediately, no rebuild).
+	home.file.".config/syland/context/devenvs".source = ./syland-context-devenvs;
 }
