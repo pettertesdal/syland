@@ -31,6 +31,15 @@ hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("qs ipc call syland-menu context"), {
 -- creating fresh if no window exists at all), and hides the special
 -- workspace if it's already open, correct, and visible.
 hl.bind(mainMod .. " + 0", hl.dsp.exec_cmd("syland-context toggle-devterm"), { description = "Toggle current project's dev terminal" })
+-- Thunderbird runs the whole session on its own hidden special
+-- workspace (home/hypr/base.lua's startup hook, home/hypr/layerrules.lua's
+-- window rule). Through syland-mail-toggle, not a direct
+-- toggle_special() dispatcher call -- that alone would just show/hide
+-- an empty special workspace forever once the window's been closed,
+-- confirmed live: closing Thunderbird then pressing this only revealed
+-- an empty workspace, nothing relaunched it. The script relaunches it
+-- first if it's not running, then toggles visibility.
+hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("syland-mail-toggle"), { description = "Toggle mail" })
 hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("syland-context open pdf"), { description = "Open context PDF" })
 -- ALT + P freed up: syland-context's "notes" subcommand (per-project
 -- TODO.md) is retired now that the Taskwarrior panel (SUPER + ALT + T)

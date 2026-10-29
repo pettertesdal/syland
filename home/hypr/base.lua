@@ -105,4 +105,21 @@ hl.on("hyprland.start", function()
     -- already-running unit is a no-op, so this is safe to run every
     -- Hyprland start regardless of whether it's already up.
     hl.exec_cmd("systemctl --user start hypridle.service")
+    -- Hidden on its own special workspace (home/hypr/layerrules.lua's
+    -- own window rule) until SUPER+E -- runs the whole session so
+    -- new-mail notifications fire regardless of whether the window is
+    -- ever shown, same reasoning as the dev terminal's own
+    -- always-running-in-the-background special workspace.
+    --
+    -- A short delay first, not immediate like the other hooks above --
+    -- confirmed live that launching immediately at hyprland.start sent
+    -- Thunderbird to the normal default workspace instead of
+    -- special:mail, even though the exact same window rule (class is
+    -- really "thunderbird", confirmed live) correctly routes it once
+    -- Hyprland's already been running a while. Reads as a cold-start
+    -- race between this hook firing and window rules being fully
+    -- registered, not a rule-matching problem -- not root-caused
+    -- further than that, so if this still races on some boots, the
+    -- delay may need to grow rather than something here being wrong.
+    hl.exec_cmd("bash -c 'sleep 2 && exec thunderbird'")
 end)
