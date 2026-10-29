@@ -50,6 +50,7 @@ let
         # per-project devenv.nix template (home/syland-context.nix's
         # create), which has two distinct modules and enables both.
         typescript.enable = true;
+        java.enable = true;
       };
 
       # claudecode.nvim: implements the real WebSocket/MCP protocol
